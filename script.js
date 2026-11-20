@@ -35,6 +35,35 @@ const chatForm = document.getElementById("chatForm");
 
 const messages = document.getElementById("messages");
 const chatInput = document.getElementById("chatInput");
+const pickerPanel = document.getElementById("pickerPanel");
+const suggestionPanel = document.getElementById("suggestionPanel");
+const emojiToggle = document.getElementById("emojiToggle");
+const stickerToggle = document.getElementById("stickerToggle");
+const mediaToggle = document.getElementById("mediaToggle");
+const mediaPanel = document.getElementById("mediaPanel");
+
+const emojiList = [
+  "😀", "😂", "🥰", "😍", "😘", "😭",
+  "🤣", "😎", "🤗", "😡", "❤️", "🔥",
+  "👍", "🙏", "👏", "💯", "🥳", "🤔"
+];
+
+const stickerEmojis = [
+  "🥰", "😍", "😘", "😂", "🤣", "😭",
+  "😎", "🤗", "❤️", "🔥", "👍", "🙏",
+  "🥳", "💯", "😴", "🤔"
+];
+
+const stickerSuggestions = [
+  { words: ["love", "cinta", "sayang"], emoji: "🥰" },
+  { words: ["haha", "wkwk", "lucu"], emoji: "😂" },
+  { words: ["semangat"], emoji: "🔥" },
+  { words: ["good night", "selamat tidur"], emoji: "😴" },
+  { words: ["makasih", "terima kasih"], emoji: "🙏" },
+  { words: ["maaf", "sorry"], emoji: "🥺" },
+  { words: ["halo", "hai"], emoji: "👋" },
+  { words: ["kangen", "rindu"], emoji: "😘" }
+];
 const message = document.getElementById("message");
 
 const email = document.getElementById("email");
@@ -51,6 +80,7 @@ let stopRooms = null;
 let roomsCache = [];
 let latestMessages = new Map();
 let latestUnsubs = new Map();
+let deliveryUnsubs = new Map();
 
 // TAMPILKAN HALAMAN
 function showScreen(screen) {
@@ -123,7 +153,12 @@ function clearLatestListeners() {
     unsubscribe();
   });
 
+  deliveryUnsubs.forEach(function(unsubscribe) {
+    unsubscribe();
+  });
+
   latestUnsubs.clear();
+  deliveryUnsubs.clear();
   latestMessages.clear();
 }
 
@@ -212,31 +247,66 @@ function updateLatestListeners() {
     }
   });
 
+  deliveryUnsubs.forEach(function(unsubscribe, roomId) {
+    if (!roomIds.has(roomId)) {
+      unsubscribe();
+      deliveryUnsubs.delete(roomId);
+    }
+  });
+
   roomsCache.forEach(function(room) {
-    if (latestUnsubs.has(room.id)) return;
+    // LISTENER PESAN TERAKHIR
+    if (!latestUnsubs.has(room.id)) {
+      const pesanTerakhirQuery = query(
+        collection(db, "rooms", room.id, "messages"),
+        orderBy("createdAt", "desc"),
+        limit(1)
+      );
 
-    const pesanTerakhirQuery = query(
-      collection(db, "rooms", room.id, "messages"),
-      orderBy("createdAt", "desc"),
-      limit(1)
-    );
+      const unsubscribe = onSnapshot(
+        pesanTerakhirQuery,
+        function(snapshot) {
+          latestMessages.set(
+            room.id,
+            snapshot.empty ? null : snapshot.docs[0].data()
+          );
 
-    const unsubscribe = onSnapshot(
-      pesanTerakhirQuery,
-      function(snapshot) {
-        latestMessages.set(
-          room.id,
-          snapshot.empty ? null : snapshot.docs[0].data()
-        );
+          renderConversations();
+        },
+        function(error) {
+          console.error("Gagal memuat pesan terakhir:", error);
+        }
+      );
 
-        renderConversations();
-      },
-      function(error) {
-        console.error("Gagal memuat pesan terakhir:", error);
-      }
-    );
+      latestUnsubs.set(room.id, unsubscribe);
+    }
 
-    latestUnsubs.set(room.id, unsubscribe);
+    // LISTENER STATUS PESAN DITERIMA
+    if (!deliveryUnsubs.has(room.id)) {
+      const pesanMasukQuery = query(
+        collection(db, "rooms", room.id, "messages"),
+        orderBy("createdAt", "desc"),
+        limit(50)
+      );
+
+      const stopDelivery = onSnapshot(
+        pesanMasukQuery,
+        function(snapshot) {
+          snapshot.forEach(function(item) {
+            tandaiPesanDiterima(
+              room.id,
+              item.id,
+              item.data()
+            );
+          });
+        },
+        function(error) {
+          console.error("Gagal memantau pesan diterima:", error);
+        }
+      );
+
+      deliveryUnsubs.set(room.id, stopDelivery);
+    }
   });
 }
 
@@ -422,6 +492,48 @@ document.getElementById("openPrivateChat")
     }
   });
 
+// STATUS PESAN DITERIMA
+function tandaiPesanDiterima(roomId, messageId, data) {
+  if (!currentUser || data.senderId === currentUser.uid) return;
+
+  const delivered = Array.isArray(data.deliveredTo)
+    ? data.deliveredTo : [];
+
+  if (delivered.includes(currentUser.uid)) return;
+
+  updateDoc(
+    doc(db, "rooms", roomId, "messages", messageId),
+    { deliveredTo: arrayUnion(currentUser.uid) }
+  ).catch(function(error) {
+    console.error("Gagal memperbarui status diterima:", error);
+  });
+}
+
+// STATUS PESAN DIBACA
+function tandaiPesanDibaca(roomId, messageId, data) {
+  if (!currentUser || data.senderId === currentUser.uid) return;
+
+  const delivered = Array.isArray(data.deliveredTo)
+    ? data.deliveredTo : [];
+  const read = Array.isArray(data.readBy)
+    ? data.readBy : [];
+
+  if (
+    delivered.includes(currentUser.uid) &&
+    read.includes(currentUser.uid)
+  ) return;
+
+  updateDoc(
+    doc(db, "rooms", roomId, "messages", messageId),
+    {
+      deliveredTo: arrayUnion(currentUser.uid),
+      readBy: arrayUnion(currentUser.uid)
+    }
+  ).catch(function(error) {
+    console.error("Gagal memperbarui status dibaca:", error);
+  });
+}
+
 // BUKA RUANG CHAT
 function openRoom(roomId) {
   if (stopMessages) stopMessages();
@@ -454,13 +566,55 @@ function openRoom(roomId) {
       snapshot.forEach(function(item) {
         const data = item.data();
 
-        const bubble = document.createElement("div");
+        // Tandai pesan dari lawan chat sebagai sudah dibaca
+        tandaiPesanDibaca(roomId, item.id, data);
 
+        const milikSaya = data.senderId === currentUser.uid;
+
+        const bubble = document.createElement("div");
         bubble.className =
           "message-bubble " +
-          (data.senderId === currentUser.uid ? "sent" : "received");
+          (milikSaya ? "sent" : "received");
 
-        bubble.textContent = data.text || "";
+        if (stickerEmojis.includes(data.text)) {
+          bubble.classList.add("sticker-message");
+        }
+
+        const isiPesan = document.createElement("div");
+        isiPesan.className = "message-text";
+        isiPesan.textContent = data.text || "";
+        bubble.appendChild(isiPesan);
+
+        if (milikSaya) {
+          const ruang = roomsCache.find(function(room) {
+            return room.id === roomId;
+          });
+
+          const partnerUid = ruang && Array.isArray(ruang.members)
+            ? ruang.members.find(function(uid) {
+                return uid !== currentUser.uid;
+              })
+            : null;
+
+          const delivered = Array.isArray(data.deliveredTo)
+            ? data.deliveredTo : [];
+          const read = Array.isArray(data.readBy)
+            ? data.readBy : [];
+
+          const status = document.createElement("span");
+          status.className = "message-status";
+
+          if (partnerUid && read.includes(partnerUid)) {
+            status.textContent = "✓✓";
+            status.classList.add("read");
+          } else if (partnerUid && delivered.includes(partnerUid)) {
+            status.textContent = "✓✓";
+          } else {
+            status.textContent = "✓";
+          }
+
+          bubble.appendChild(status);
+        }
 
         messages.appendChild(bubble);
       });
@@ -484,13 +638,17 @@ chatForm.addEventListener("submit", async function(event) {
 
   try {
     chatInput.value = "";
+    chatInput.style.height = "44px";
+    suggestionPanel.hidden = true;
 
     await addDoc(
       collection(db, "rooms", currentRoomId, "messages"),
       {
         senderId: currentUser.uid,
         text: text,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        deliveredTo: [],
+        readBy: []
       }
     );
 
@@ -499,6 +657,134 @@ chatForm.addEventListener("submit", async function(event) {
     chatInput.value = text;
     alert("Pesan gagal dikirim: " + error.message);
   }
+});
+
+
+// MENU LAMPIRAN FOTO DAN VIDEO
+mediaToggle.addEventListener("click", function() {
+  const akanDibuka = mediaPanel.hidden;
+
+  tutupPicker();
+  mediaPanel.hidden = !akanDibuka;
+});
+
+// KOLOM PESAN OTOMATIS MEMANJANG
+chatInput.addEventListener("input", function() {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
+
+// ENTER UNTUK KIRIM, SHIFT + ENTER UNTUK BARIS BARU
+chatInput.addEventListener("keydown", function(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    chatForm.requestSubmit();
+  }
+});
+
+// EMOJI DAN STICKER DATECHAT
+function tutupPicker() {
+  pickerPanel.hidden = true;
+  suggestionPanel.hidden = true;
+}
+
+function bukaPicker(jenis) {
+  suggestionPanel.hidden = true;
+
+  if (!pickerPanel.hidden) {
+    pickerPanel.hidden = true;
+    return;
+  }
+
+  pickerPanel.innerHTML = "";
+  pickerPanel.hidden = false;
+
+  const daftar = jenis === "emoji" ? emojiList : stickerEmojis;
+
+  daftar.forEach(function(simbol) {
+    const tombol = document.createElement("button");
+    tombol.type = "button";
+    tombol.textContent = simbol;
+    tombol.setAttribute("aria-label", simbol);
+
+    tombol.addEventListener("click", async function() {
+      if (jenis === "emoji") {
+        chatInput.value += simbol;
+        chatInput.focus();
+        chatInput.dispatchEvent(new Event("input"));
+      } else {
+        await kirimSticker(simbol);
+      }
+    });
+
+    pickerPanel.appendChild(tombol);
+  });
+}
+
+async function kirimSticker(simbol) {
+  if (!currentUser || !currentRoomId) return;
+
+  try {
+    await addDoc(
+      collection(db, "rooms", currentRoomId, "messages"),
+      {
+        senderId: currentUser.uid,
+        text: simbol,
+        createdAt: serverTimestamp()
+      }
+    );
+
+    tutupPicker();
+  } catch (error) {
+    console.error("Gagal mengirim sticker:", error);
+    alert("Sticker gagal dikirim: " + error.message);
+  }
+}
+
+emojiToggle.addEventListener("click", function() {
+  bukaPicker("emoji");
+});
+
+stickerToggle.addEventListener("click", function() {
+  bukaPicker("sticker");
+});
+
+// REKOMENDASI STICKER SAAT MENGETIK
+chatInput.addEventListener("input", function() {
+  const kata = chatInput.value.toLowerCase().trim();
+  suggestionPanel.innerHTML = "";
+
+  if (!kata) {
+    suggestionPanel.hidden = true;
+    return;
+  }
+
+  const cocok = stickerSuggestions.filter(function(item) {
+    return item.words.some(function(word) {
+      return kata.includes(word);
+    });
+  });
+
+  if (cocok.length === 0) {
+    suggestionPanel.hidden = true;
+    return;
+  }
+
+  suggestionPanel.hidden = false;
+  pickerPanel.hidden = true;
+
+  cocok.forEach(function(item) {
+    const tombol = document.createElement("button");
+    tombol.type = "button";
+    tombol.textContent = item.emoji;
+    tombol.title = "Kirim sticker";
+
+    tombol.addEventListener("click", function() {
+      kirimSticker(item.emoji);
+    });
+
+    suggestionPanel.appendChild(tombol);
+  });
 });
 
 // KEMBALI KE DAFTAR CHAT

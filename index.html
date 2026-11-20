@@ -124,25 +124,35 @@
       </div>
     </section>
 
+    <div id="suggestionPanel" class="suggestion-panel" hidden></div>
+    <div id="pickerPanel" class="picker-panel" hidden></div>
+
+    <div id="mediaPanel" class="media-panel" hidden>
+      <label for="photoInput">📷 Foto</label>
+      <label for="videoInput">🎥 Video</label>
+    </div>
+
+    <input type="file" id="photoInput" accept="image/*" hidden>
+    <input type="file" id="videoInput" accept="video/*" hidden>
+
     <form class="chat-input-area" id="chatForm">
-      <label class="media-button" for="photoInput"
-        title="Kirim foto">📷</label>
+      <div class="chat-compose-row">
+        <button type="button" id="mediaToggle"
+          class="picker-button" aria-label="Lampiran">＋</button>
 
-      <input type="file" id="photoInput"
-        accept="image/*" hidden>
+        <textarea id="chatInput" placeholder="Tulis pesan..."
+          rows="1" maxlength="2000"></textarea>
 
-      <label class="media-button" for="videoInput"
-        title="Kirim video">🎥</label>
+        <button type="submit" class="send-button"
+          aria-label="Kirim pesan">➤</button>
+      </div>
 
-      <input type="file" id="videoInput"
-        accept="video/*" hidden>
-
-      <input type="text" id="chatInput"
-        placeholder="Tulis pesan..."
-        autocomplete="off">
-
-      <button type="submit" class="send-button"
-        aria-label="Kirim pesan">➤</button>
+      <div class="chat-tools-row">
+        <button type="button" id="emojiToggle"
+          class="picker-button" aria-label="Pilih emoji">😀 Emoji</button>
+        <button type="button" id="stickerToggle"
+          class="picker-button" aria-label="Pilih sticker">🎭 Sticker</button>
+      </div>
     </form>
 
   </main>
