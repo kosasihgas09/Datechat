@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101014">
+  <meta name="description" content="DateChat - Private Messaging">
+  <title>DateChat</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <main class="login-container" id="loginScreen">
+    <div class="logo">💬</div>
+    <h1>DateChat</h1>
+    <p>Private messaging for everyone.</p>
+
+<form id="loginForm">
+  <input id="email" type="email"
+    placeholder="Alamat email" required>
+
+  <input id="password" type="password"
+    placeholder="Password (minimal 6 karakter)"
+    minlength="6" required>
+
+  <button type="submit">Masuk ke DateChat</button>
+
+  <button type="button" id="registerButton">
+    Buat Akun Baru
+  </button>
+
+  <p id="message"></p>
+</form>
+
+    <small>PRIVATE • SECURE • CONNECTED</small>
+  </main>
+
+  <!-- HALAMAN UTAMA -->
+  <main class="home-screen" id="homeScreen" hidden>
+
+    <header class="home-header">
+      <div>
+        <h1>DateChat<span>.</span></h1>
+        <p>Private Messaging</p>
+      </div>
+      <button type="button" id="logoutHome"
+        class="icon-button" aria-label="Keluar">↗</button>
+    </header>
+
+    <section class="welcome-section">
+      <p>SELAMAT DATANG</p>
+      <h2>Pesan dan cerita,<br>semua di satu tempat.</h2>
+    </section>
+
+    <!-- MENU CHAT -->
+    <section class="chat-menu">
+      <button type="button" id="openPrivateChat"
+        class="menu-card">
+        <span class="menu-icon">💬</span>
+        <span>
+          <strong>Chat Pribadi</strong>
+          <small>Percakapan satu lawan satu</small>
+        </span>
+        <span class="arrow">›</span>
+      </button>
+
+      <button type="button" id="openGroupChat"
+        class="menu-card">
+        <span class="menu-icon">👥</span>
+        <span>
+          <strong>Group Chat</strong>
+          <small>Ngobrol bersama banyak teman</small>
+        </span>
+        <span class="arrow">›</span>
+      </button>
+    </section>
+
+    <!-- DAFTAR PERCAKAPAN -->
+    <section class="conversation-section">
+      <div class="section-heading">
+        <h3>Percakapan</h3>
+        <button type="button" id="inviteButton">
+          + Undang
+        </button>
+      </div>
+
+      <nav class="conversation-tabs">
+        <button type="button" class="active"
+          data-filter="all">Semua</button>
+        <button type="button"
+          data-filter="private">Pribadi</button>
+        <button type="button"
+          data-filter="group">Grup</button>
+      </nav>
+
+      <div id="conversationList">
+        <div class="empty-conversation">
+          <div>✉️</div>
+          <h3>Belum ada percakapan</h3>
+          <p>Mulai chat pribadi atau buat grup
+            untuk memulai percakapan.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="home-footer">
+      <span>DateChat</span>
+      <span>Private Messaging</span>
+    </footer>
+
+  </main>
+
+  <!-- RUANG CHAT -->
+  <main class="chat-screen" id="chatScreen" hidden>
+
+    <header class="chat-header">
+      <button type="button" id="backHome"
+        class="back-button" aria-label="Kembali">‹</button>
+
+      <div class="avatar">❤️</div>
+
+      <div class="chat-person">
+        <strong id="partnerName">Pasangan Chat</strong>
+        <small>Ruang pribadi DateChat</small>
+      </div>
+
+      <button type="button" id="logoutButton"
+        class="logout-button">Keluar</button>
+    </header>
+
+    <section class="messages" id="messages">
+      <div class="date-label">Percakapan dimulai</div>
+      <div class="system-message">
+        Selamat datang di DateChat ❤️
+      </div>
+    </section>
+
+    <form class="chat-input-area" id="chatForm">
+      <label class="media-button" for="photoInput"
+        title="Kirim foto">📷</label>
+      <input type="file" id="photoInput"
+        accept="image/*" hidden>
+
+      <label class="media-button" for="videoInput"
+        title="Kirim video">🎥</label>
+      <input type="file" id="videoInput"
+        accept="video/*" hidden>
+
+      <input type="text" id="chatInput"
+        placeholder="Tulis pesan..."
+        autocomplete="off">
+
+      <button type="submit" class="send-button"
+        aria-label="Kirim pesan">➤</button>
+    </form>
+
+  </main>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
+ 
