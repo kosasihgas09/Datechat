@@ -18,90 +18,72 @@
     <h1>DateChat</h1>
     <p>Private messaging for everyone.</p>
 
-<form id="loginForm">
-  <input id="email" type="email"
-    placeholder="Alamat email" required>
+    <form id="loginForm">
+      <input id="email" type="email"
+        placeholder="Alamat email" required>
 
-  <input id="password" type="password"
-    placeholder="Password (minimal 6 karakter)"
-    minlength="6" required>
+      <input id="password" type="password"
+        placeholder="Password (minimal 6 karakter)"
+        minlength="6" required>
 
-  <button type="submit">Masuk ke DateChat</button>
+      <button type="submit">Masuk ke DateChat</button>
 
-  <button type="button" id="registerButton">
-    Buat Akun Baru
-  </button>
+      <button type="button" id="registerButton">
+        Buat Akun Baru
+      </button>
 
-  <p id="message"></p>
-</form>
+      <p id="message"></p>
+    </form>
 
     <small>PRIVATE • SECURE • CONNECTED</small>
   </main>
 
-  <!-- HALAMAN UTAMA -->
+  <!-- HALAMAN PERCAKAPAN -->
   <main class="home-screen" id="homeScreen" hidden>
 
     <header class="home-header">
       <div>
         <h1>DateChat<span>.</span></h1>
-        <p>Private Messaging</p>
+        <p>Pesan pribadi kamu</p>
       </div>
-      <button type="button" id="logoutHome"
-        class="icon-button" aria-label="Keluar">↗</button>
+
+      <div class="header-actions">
+        <button type="button" id="openPrivateChat"
+          class="icon-button" aria-label="Chat baru">＋</button>
+
+        <button type="button" id="logoutHome"
+          class="icon-button" aria-label="Keluar">↗</button>
+      </div>
     </header>
 
-    <section class="welcome-section">
-      <p>SELAMAT DATANG</p>
-      <h2>Pesan dan cerita,<br>semua di satu tempat.</h2>
+    <!-- PENCARIAN -->
+    <section class="search-section">
+      <input type="search" id="searchConversation"
+        placeholder="Cari percakapan..."
+        autocomplete="off">
     </section>
 
-    <!-- MENU CHAT -->
-    <section class="chat-menu">
-      <button type="button" id="openPrivateChat"
-        class="menu-card">
-        <span class="menu-icon">💬</span>
-        <span>
-          <strong>Chat Pribadi</strong>
-          <small>Percakapan satu lawan satu</small>
-        </span>
-        <span class="arrow">›</span>
-      </button>
+    <!-- FILTER -->
+    <nav class="conversation-tabs">
+      <button type="button" class="active"
+        data-filter="all">Semua</button>
 
-      <button type="button" id="openGroupChat"
-        class="menu-card">
-        <span class="menu-icon">👥</span>
-        <span>
-          <strong>Group Chat</strong>
-          <small>Ngobrol bersama banyak teman</small>
-        </span>
-        <span class="arrow">›</span>
-      </button>
-    </section>
+      <button type="button"
+        data-filter="private">Pribadi</button>
+    </nav>
 
-    <!-- DAFTAR PERCAKAPAN -->
+    <!-- DAFTAR CHAT -->
     <section class="conversation-section">
       <div class="section-heading">
-        <h3>Percakapan</h3>
-        <button type="button" id="inviteButton">
-          + Undang
-        </button>
+        <h3>Pesan</h3>
       </div>
-
-      <nav class="conversation-tabs">
-        <button type="button" class="active"
-          data-filter="all">Semua</button>
-        <button type="button"
-          data-filter="private">Pribadi</button>
-        <button type="button"
-          data-filter="group">Grup</button>
-      </nav>
 
       <div id="conversationList">
         <div class="empty-conversation">
           <div>✉️</div>
           <h3>Belum ada percakapan</h3>
-          <p>Mulai chat pribadi atau buat grup
-            untuk memulai percakapan.</p>
+          <p>Tekan tombol + untuk membuat ruang chat
+            atau bergabung dengan kode undangan.</p>
         </div>
       </div>
     </section>
@@ -110,6 +92,10 @@
       <span>DateChat</span>
       <span>Private Messaging</span>
     </footer>
+
+    <!-- Dipertahankan agar script lama tidak error -->
+    <button type="button" id="inviteButton" hidden>Undang</button>
+    <button type="button" id="openGroupChat" hidden>Grup</button>
 
   </main>
 
@@ -141,11 +127,13 @@
     <form class="chat-input-area" id="chatForm">
       <label class="media-button" for="photoInput"
         title="Kirim foto">📷</label>
+
       <input type="file" id="photoInput"
         accept="image/*" hidden>
 
       <label class="media-button" for="videoInput"
         title="Kirim video">🎥</label>
+
       <input type="file" id="videoInput"
         accept="video/*" hidden>
 

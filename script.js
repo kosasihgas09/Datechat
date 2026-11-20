@@ -9,6 +9,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -23,6 +24,7 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+// ELEMEN HALAMAN
 const loginScreen = document.getElementById("loginScreen");
 const homeScreen = document.getElementById("homeScreen");
 const chatScreen = document.getElementById("chatScreen");
@@ -37,19 +39,34 @@ const message = document.getElementById("message");
 
 const email = document.getElementById("email");
 const password = document.getElementById("password");
+const searchInput = document.getElementById("searchConversation");
 
 let currentUser = null;
 let currentRoomId = null;
 let currentFilter = "all";
+
 let stopMessages = null;
 let stopRooms = null;
+
 let roomsCache = [];
+let latestMessages = new Map();
+let latestUnsubs = new Map();
 
 // TAMPILKAN HALAMAN
 function showScreen(screen) {
   loginScreen.hidden = screen !== "login";
   homeScreen.hidden = screen !== "home";
   chatScreen.hidden = screen !== "chat";
+}
+
+// FORMAT WAKTU
+function formatTime(timestamp) {
+  if (!timestamp || !timestamp.toDate) return "";
+
+  return timestamp.toDate().toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 // LOGIN
@@ -63,6 +80,7 @@ loginForm.addEventListener("submit", async function(event) {
       email.value.trim(),
       password.value
     );
+
     message.textContent = "";
   } catch (error) {
     message.textContent = "Login gagal: " + error.message;
@@ -92,19 +110,34 @@ registerButton.addEventListener("click", async function() {
       alamatEmail,
       kataSandi
     );
+
     message.textContent = "";
   } catch (error) {
     message.textContent = "Pendaftaran gagal: " + error.message;
   }
 });
 
-// STATUS LOGIN DAN PROFIL
+// BERSIHKAN LISTENER PESAN TERAKHIR
+function clearLatestListeners() {
+  latestUnsubs.forEach(function(unsubscribe) {
+    unsubscribe();
+  });
+
+  latestUnsubs.clear();
+  latestMessages.clear();
+}
+
+// STATUS LOGIN
 onAuthStateChanged(auth, async function(user) {
   currentUser = user;
 
   if (stopMessages) stopMessages();
   if (stopRooms) stopRooms();
 
+  clearLatestListeners();
+
+  stopMessages = null;
+  stopRooms = null;
   currentRoomId = null;
   roomsCache = [];
 
@@ -129,12 +162,12 @@ onAuthStateChanged(auth, async function(user) {
 
   } catch (error) {
     console.error(error);
-    showScreen("home");
+    showScreen("login");
     alert("Gagal memuat profil: " + error.message);
   }
 });
 
-// DAFTAR RUANG CHAT PENGGUNA
+// MEMUAT DAFTAR RUANG
 function loadConversations() {
   if (!currentUser) return;
 
@@ -153,6 +186,7 @@ function loadConversations() {
         };
       });
 
+      updateLatestListeners();
       renderConversations();
     },
     function(error) {
@@ -162,27 +196,95 @@ function loadConversations() {
   );
 }
 
-// TAMPILKAN DAFTAR PERCAKAPAN
+// MENDENGARKAN PESAN TERAKHIR SETIAP RUANG
+function updateLatestListeners() {
+  const roomIds = new Set(
+    roomsCache.map(function(room) {
+      return room.id;
+    })
+  );
+
+  latestUnsubs.forEach(function(unsubscribe, roomId) {
+    if (!roomIds.has(roomId)) {
+      unsubscribe();
+      latestUnsubs.delete(roomId);
+      latestMessages.delete(roomId);
+    }
+  });
+
+  roomsCache.forEach(function(room) {
+    if (latestUnsubs.has(room.id)) return;
+
+    const pesanTerakhirQuery = query(
+      collection(db, "rooms", room.id, "messages"),
+      orderBy("createdAt", "desc"),
+      limit(1)
+    );
+
+    const unsubscribe = onSnapshot(
+      pesanTerakhirQuery,
+      function(snapshot) {
+        latestMessages.set(
+          room.id,
+          snapshot.empty ? null : snapshot.docs[0].data()
+        );
+
+        renderConversations();
+      },
+      function(error) {
+        console.error("Gagal memuat pesan terakhir:", error);
+      }
+    );
+
+    latestUnsubs.set(room.id, unsubscribe);
+  });
+}
+
+// TAMPILKAN DAFTAR CHAT
 function renderConversations() {
   const list = document.getElementById("conversationList");
   list.innerHTML = "";
 
+  const kataKunci = searchInput.value.trim().toLowerCase();
+
   const filtered = roomsCache.filter(function(room) {
-    if (currentFilter === "all") return true;
-    return room.type === currentFilter;
+    const cocokFilter =
+      currentFilter === "all" || room.type === currentFilter;
+
+    const cocokCari =
+      room.id.toLowerCase().includes(kataKunci);
+
+    return cocokFilter && cocokCari;
+  });
+
+  filtered.sort(function(a, b) {
+    const pesanA = latestMessages.get(a.id);
+    const pesanB = latestMessages.get(b.id);
+
+    const waktuA = pesanA?.createdAt?.toMillis?.() || 0;
+    const waktuB = pesanB?.createdAt?.toMillis?.() || 0;
+
+    return waktuB - waktuA;
   });
 
   if (filtered.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-conversation";
 
+    const icon = document.createElement("div");
+    icon.textContent = "✉️";
+
     const title = document.createElement("h3");
-    title.textContent = "Belum ada percakapan";
+    title.textContent = kataKunci
+      ? "Percakapan tidak ditemukan"
+      : "Belum ada percakapan";
 
     const info = document.createElement("p");
-    info.textContent = "Buat ruang chat atau gabung menggunakan kode undangan.";
+    info.textContent = kataKunci
+      ? "Coba cari dengan kode ruang yang lain."
+      : "Tekan tombol + untuk memulai percakapan.";
 
-    empty.append(title, info);
+    empty.append(icon, title, info);
     list.appendChild(empty);
     return;
   }
@@ -192,16 +294,27 @@ function renderConversations() {
     button.type = "button";
     button.className = "menu-card";
 
+    const content = document.createElement("span");
+    content.style.flex = "1";
+    content.style.minWidth = "0";
+
     const title = document.createElement("strong");
-    title.textContent = "Chat Pribadi";
+    title.textContent = "Chat " + room.id.slice(0, 8);
 
     const detail = document.createElement("small");
-    detail.textContent = "Kode: " + room.id.slice(0, 8);
+    const lastMessage = latestMessages.get(room.id);
 
-    const content = document.createElement("span");
+    detail.textContent = lastMessage
+      ? lastMessage.text || "Pesan"
+      : "Belum ada pesan";
+
+    const time = document.createElement("small");
+    time.textContent = lastMessage
+      ? formatTime(lastMessage.createdAt)
+      : "Baru";
+
     content.append(title, detail);
-
-    button.appendChild(content);
+    button.append(content, time);
 
     button.addEventListener("click", function() {
       openRoom(room.id);
@@ -211,7 +324,10 @@ function renderConversations() {
   });
 }
 
-// BUAT RUANG CHAT PRIBADI
+// PENCARIAN CHAT
+searchInput.addEventListener("input", renderConversations);
+
+// BUAT RUANG CHAT
 async function createPrivateRoom() {
   if (!currentUser) return;
 
@@ -225,13 +341,13 @@ async function createPrivateRoom() {
 
     const roomId = roomRef.id;
 
-    openRoom(roomId);
-
     alert(
       "Ruang berhasil dibuat!\n\n" +
       "Kode undangan:\n" + roomId +
-      "\n\nBagikan kode ini kepada teman yang ingin diajak chat."
+      "\n\nBagikan kode ini kepada teman kamu."
     );
+
+    openRoom(roomId);
 
   } catch (error) {
     console.error(error);
@@ -289,11 +405,11 @@ async function joinPrivateRoom() {
   }
 }
 
-// MENU CHAT PRIBADI
+// TOMBOL CHAT BARU (+)
 document.getElementById("openPrivateChat")
   .addEventListener("click", function() {
     const pilihan = prompt(
-      "CHAT PRIBADI\n\n" +
+      "CHAT BARU\n\n" +
       "1. Buat ruang baru\n" +
       "2. Gabung dengan kode undangan\n\n" +
       "Masukkan angka 1 atau 2:"
@@ -306,22 +422,11 @@ document.getElementById("openPrivateChat")
     }
   });
 
-// TOMBOL UNDANG
-document.getElementById("inviteButton")
-  .addEventListener("click", createPrivateRoom);
-
-// MENU GRUP
-document.getElementById("openGroupChat")
-  .addEventListener("click", function() {
-    alert("Fitur grup akan kita bangun setelah chat pribadi selesai.");
-  });
-
-// BUKA RUANG DAN DENGARKAN PESAN
+// BUKA RUANG CHAT
 function openRoom(roomId) {
   if (stopMessages) stopMessages();
 
   currentRoomId = roomId;
-
   showScreen("chat");
 
   document.getElementById("partnerName").textContent =
@@ -369,7 +474,7 @@ function openRoom(roomId) {
   );
 }
 
-// KIRIM PESAN ONLINE
+// KIRIM PESAN
 chatForm.addEventListener("submit", async function(event) {
   event.preventDefault();
 
@@ -396,7 +501,7 @@ chatForm.addEventListener("submit", async function(event) {
   }
 });
 
-// KEMBALI KE BERANDA
+// KEMBALI KE DAFTAR CHAT
 document.getElementById("backHome")
   .addEventListener("click", function() {
     if (stopMessages) stopMessages();
@@ -412,6 +517,8 @@ async function logout() {
   try {
     if (stopMessages) stopMessages();
     if (stopRooms) stopRooms();
+
+    clearLatestListeners();
 
     await signOut(auth);
   } catch (error) {
@@ -436,6 +543,7 @@ document.querySelectorAll(".conversation-tabs button")
 
       button.classList.add("active");
       currentFilter = button.dataset.filter;
+
       renderConversations();
     });
   });
@@ -459,4 +567,3 @@ function handleMedia(inputId, type) {
 
 handleMedia("photoInput", "foto");
 handleMedia("videoInput", "video");
-
