@@ -13,6 +13,7 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  runTransaction,
   arrayUnion,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -52,6 +53,7 @@ const profilePanel = document.getElementById("profilePanel");
 const closeProfileButton = document.getElementById("closeProfile");
 const profileAvatar = document.getElementById("profileAvatar");
 const profileNameInput = document.getElementById("profileNameInput");
+const profileUsernameInput = document.getElementById("profileUsernameInput");
 const chooseProfilePhotoButton = document.getElementById("chooseProfilePhoto");
 const takeProfilePhotoButton = document.getElementById("takeProfilePhoto");
 const profilePhotoInput = document.getElementById("profilePhotoInput");
@@ -104,7 +106,8 @@ let deliveryUnsubs = new Map();
 // DATA PROFIL
 let currentProfile = {
   displayName: "",
-  photoURL: ""
+  photoURL: "",
+  username: ""
 };
 let selectedProfileFile = null;
 let stopPartnerProfile = null;
@@ -276,11 +279,17 @@ async function unggahFotoProfil(file) {
   return hasil.secure_url;
 }
 
-// SIMPAN NAMA DAN FOTO PROFIL
+// SIMPAN PROFIL DAN KLAIM USERNAME
 saveProfileButton.addEventListener("click", async function() {
   if (!currentUser) return;
 
   const displayName = profileNameInput.value.trim();
+  const usernameInput = profileUsernameInput.value
+    .trim()
+    .replace(/^@/, "")
+    .toLowerCase();
+
+  const usernameSaatIni = currentProfile.username || "";
 
   if (!displayName) {
     profileStatus.textContent = "Nama tampilan tidak boleh kosong.";
@@ -291,6 +300,29 @@ saveProfileButton.addEventListener("click", async function() {
     profileStatus.textContent = "Nama maksimal 40 karakter.";
     return;
   }
+
+  if (
+    usernameInput &&
+    !/^[a-z0-9_]{4,20}$/.test(usernameInput)
+  ) {
+    profileStatus.textContent =
+      "Username harus 4-20 karakter, hanya huruf kecil, angka, dan garis bawah.";
+    return;
+  }
+
+  if (
+    usernameSaatIni &&
+    usernameInput &&
+    usernameInput !== usernameSaatIni
+  ) {
+    profileStatus.textContent =
+      "Username yang sudah diklaim tidak bisa diganti.";
+    return;
+  }
+
+  const usernameBaru = !usernameSaatIni
+    ? usernameInput
+    : "";
 
   saveProfileButton.disabled = true;
   profileStatus.textContent = "Menyimpan profil...";
@@ -303,26 +335,82 @@ saveProfileButton.addEventListener("click", async function() {
       photoURL = await unggahFotoProfil(selectedProfileFile);
     }
 
-    await updateDoc(doc(db, "publicProfiles", currentUser.uid), {
-      displayName: displayName,
-      photoURL: photoURL,
-      updatedAt: serverTimestamp()
-    });
+    const profileRef = doc(
+      db,
+      "publicProfiles",
+      currentUser.uid
+    );
+
+    if (usernameBaru) {
+      profileStatus.textContent = "Memeriksa ketersediaan username...";
+
+      await runTransaction(db, async (transaction) => {
+        const profileSnap = await transaction.get(profileRef);
+
+        if (!profileSnap.exists()) {
+          throw new Error("Profil pengguna tidak ditemukan.");
+        }
+
+        const usernameRef = doc(
+          db,
+          "usernames",
+          usernameBaru
+        );
+
+        const usernameSnap = await transaction.get(usernameRef);
+
+        if (usernameSnap.exists()) {
+          throw new Error("Username sudah digunakan orang lain.");
+        }
+
+        if (profileSnap.data().username) {
+          throw new Error("Akun ini sudah memiliki username.");
+        }
+
+        transaction.update(profileRef, {
+          displayName: displayName,
+          photoURL: photoURL,
+          username: usernameBaru,
+          updatedAt: serverTimestamp()
+        });
+
+        transaction.set(usernameRef, {
+          uid: currentUser.uid,
+          username: usernameBaru,
+          createdAt: serverTimestamp()
+        });
+      });
+
+    } else {
+      await updateDoc(profileRef, {
+        displayName: displayName,
+        photoURL: photoURL,
+        updatedAt: serverTimestamp()
+      });
+    }
 
     currentProfile = {
       displayName: displayName,
-      photoURL: photoURL
+      photoURL: photoURL,
+      username: usernameSaatIni || usernameBaru
     };
+
+    profileUsernameInput.value = currentProfile.username;
 
     selectedProfileFile = null;
     profilePhotoInput.value = "";
     profileCameraInput.value = "";
 
     tampilkanAvatar(profileAvatar, photoURL);
-    profileStatus.textContent = "Profil berhasil disimpan.";
+
+    profileStatus.textContent = currentProfile.username
+      ? "Profil berhasil disimpan. Username: @" + currentProfile.username
+      : "Profil berhasil disimpan. Silakan pilih username kamu.";
+
   } catch (error) {
     console.error(error);
-    profileStatus.textContent = "Gagal menyimpan: " + error.message;
+    profileStatus.textContent =
+      "Gagal menyimpan: " + error.message;
   } finally {
     saveProfileButton.disabled = false;
   }
@@ -378,18 +466,21 @@ onAuthStateChanged(auth, async function(user) {
 
       currentProfile = {
         displayName: namaAwal,
-        photoURL: ""
+        photoURL: "",
+        username: ""
       };
     } else {
       const dataProfil = publicProfileSnap.data();
 
       currentProfile = {
         displayName: dataProfil.displayName || "Pengguna",
-        photoURL: dataProfil.photoURL || ""
+        photoURL: dataProfil.photoURL || "",
+        username: dataProfil.username || ""
       };
     }
 
     profileNameInput.value = currentProfile.displayName;
+    profileUsernameInput.value = currentProfile.username;
     tampilkanAvatar(profileAvatar, currentProfile.photoURL);
 
     showScreen("home");
@@ -675,13 +766,125 @@ async function joinPrivateRoom() {
   }
 }
 
-// TOMBOL CHAT BARU (+)
+// MENU CHAT BARU
+const newChatPanel = document.getElementById("newChatPanel");
+
 document.getElementById("openPrivateChat")
   .addEventListener("click", function() {
+    newChatPanel.hidden = false;
+  });
+
+document.getElementById("closeNewChat")
+  .addEventListener("click", function() {
+    newChatPanel.hidden = true;
+  });
+
+// CARI TEMAN DENGAN USERNAME
+document.getElementById("findByUsername")
+  .addEventListener("click", async function() {
+    const input = document.getElementById("friendUsernameInput");
+    const hasil = document.getElementById("friendSearchResult");
+    const username = input.value.trim().replace(/^@/, "").toLowerCase();
+    const tombol = this;
+
+    hasil.textContent = "";
+
+    if (!username) {
+      hasil.textContent = "Masukkan username teman.";
+      return;
+    }
+
+    if (!/^[a-z0-9_]{4,20}$/.test(username)) {
+      hasil.textContent =
+        "Username harus 4-20 karakter, huruf kecil, angka, atau garis bawah.";
+      return;
+    }
+
+    tombol.disabled = true;
+    hasil.textContent = "Sedang mencari pengguna...";
+
+    try {
+      const usernameRef = doc(db, "usernames", username);
+      const usernameSnap = await getDoc(usernameRef);
+
+      if (!usernameSnap.exists()) {
+        hasil.textContent = "Username tidak ditemukan.";
+        return;
+      }
+
+      const pemilik = usernameSnap.data();
+
+      if (
+        !pemilik.uid ||
+        pemilik.username !== username ||
+        pemilik.uid === currentUser.uid
+      ) {
+        hasil.textContent = pemilik.uid === currentUser.uid
+          ? "Itu adalah username akun kamu sendiri."
+          : "Data username tidak valid.";
+        return;
+      }
+
+      const profilRef = doc(db, "publicProfiles", pemilik.uid);
+      const profilSnap = await getDoc(profilRef);
+
+      if (!profilSnap.exists()) {
+        hasil.textContent = "Profil pengguna tidak ditemukan.";
+        return;
+      }
+
+      const data = profilSnap.data();
+
+      if (
+        data.uid !== pemilik.uid ||
+        data.username !== username
+      ) {
+        hasil.textContent = "Data profil tidak cocok.";
+        return;
+      }
+
+      hasil.textContent = "";
+
+      const kartu = document.createElement("div");
+      kartu.className = "friend-search-card";
+
+      if (data.photoURL) {
+        const foto = document.createElement("img");
+        foto.src = data.photoURL;
+        foto.alt = "Foto profil";
+        foto.className = "friend-search-avatar";
+        kartu.appendChild(foto);
+      }
+
+      const informasi = document.createElement("div");
+
+      const nama = document.createElement("strong");
+      nama.textContent = data.displayName || "Pengguna DateChat";
+
+      const id = document.createElement("p");
+      id.textContent = "@" + username;
+
+      informasi.append(nama, id);
+      kartu.appendChild(informasi);
+      hasil.appendChild(kartu);
+
+    } catch (error) {
+      console.error("Pencarian username gagal:", error);
+      hasil.textContent = "Gagal mencari pengguna. Coba lagi.";
+    } finally {
+      tombol.disabled = false;
+    }
+  });
+
+// KODE UNDANGAN
+document.getElementById("openInviteCode")
+  .addEventListener("click", function() {
+    newChatPanel.hidden = true;
+
     const pilihan = prompt(
-      "CHAT BARU\n\n" +
-      "1. Buat ruang baru\n" +
-      "2. Gabung dengan kode undangan\n\n" +
+      "KODE UNDANGAN\\n\\n" +
+      "1. Buat kode undangan\\n" +
+      "2. Masukkan kode teman\\n\\n" +
       "Masukkan angka 1 atau 2:"
     );
 

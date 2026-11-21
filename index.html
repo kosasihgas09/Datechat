@@ -73,6 +73,13 @@
         <input id="profileNameInput" type="text"
           maxlength="40" placeholder="Masukkan nama kamu">
 
+        <label for="profileUsernameInput">Username unik</label>
+        <input id="profileUsernameInput" type="text"
+          maxlength="20" placeholder="Contoh: budi123"
+          autocomplete="username" autocapitalize="none"
+          spellcheck="false">
+        <small>Username digunakan teman untuk menemukan akun kamu.</small>
+
         <label>Foto profil</label>
         <div class="profile-photo-actions">
           <button type="button" id="chooseProfilePhoto">
@@ -92,6 +99,36 @@
 
         <button type="button" id="saveProfileButton">
           Simpan Profil
+        </button>
+      </div>
+    </section>
+
+    <!-- MENU CHAT BARU -->
+    <section id="newChatPanel" class="profile-panel" hidden>
+      <div class="profile-card">
+        <div class="profile-heading">
+          <h2>Chat Baru</h2>
+          <button type="button" id="closeNewChat"
+            aria-label="Tutup">✕</button>
+        </div>
+
+        <div class="new-chat-search">
+          <label for="friendUsernameInput">Cari teman dengan username</label>
+          <input id="friendUsernameInput" type="text"
+            placeholder="Contoh: @budi123"
+            autocomplete="off" autocapitalize="none"
+            spellcheck="false">
+          <button type="button" id="findByUsername"
+            class="new-chat-option">
+            🔎 Cari Pengguna
+          </button>
+          <div id="friendSearchResult" aria-live="polite"></div>
+        </div>
+
+        <button type="button" id="openInviteCode"
+          class="new-chat-option">
+          🔑 Kode undangan
+          <small>Buat atau masukkan kode teman</small>
         </button>
       </div>
     </section>

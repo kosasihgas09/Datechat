@@ -157,6 +157,28 @@ button {
   color: var(--text);
 }
 
+/* MENU CHAT BARU */
+.new-chat-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 15px;
+  margin-top: 12px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #172554;
+  color: #ffffff;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.new-chat-option small {
+  color: #cbd5e1;
+  font-size: 12px;
+}
 .search-section input::placeholder {
   color: var(--muted);
 }
@@ -764,4 +786,31 @@ button {
   min-height: 16px;
   color: var(--muted);
   font-size: 12px;
+}
+
+
+/* HASIL PENCARIAN TEMAN */
+.friend-search-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  background: #172554;
+  color: #ffffff;
+}
+
+.friend-search-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.friend-search-card p {
+  margin: 5px 0 0;
+  color: #cbd5e1;
+  font-size: 13px;
 }
