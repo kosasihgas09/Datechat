@@ -96,6 +96,11 @@ let currentRoomId = null;
 let currentFilter = "all";
 
 let stopMessages = null;
+let stopHiddenMessages = null;
+let hiddenMessageIds = new Set();
+let stopHiddenChats = null;
+let hiddenChats = new Map();
+let hiddenChatsLoaded = false;
 let stopRooms = null;
 
 let roomsCache = [];
@@ -421,12 +426,17 @@ onAuthStateChanged(auth, async function(user) {
   currentUser = user;
 
   if (stopMessages) stopMessages();
+  if (stopHiddenMessages) stopHiddenMessages();
+  if (stopHiddenChats) stopHiddenChats();
   if (stopPartnerProfile) stopPartnerProfile();
   if (stopRooms) stopRooms();
 
   clearLatestListeners();
 
   stopMessages = null;
+  stopHiddenChats = null;
+  hiddenChats.clear();
+  hiddenChatsLoaded = false;
   stopPartnerProfile = null;
   stopRooms = null;
   currentRoomId = null;
@@ -484,6 +494,7 @@ onAuthStateChanged(auth, async function(user) {
     tampilkanAvatar(profileAvatar, currentProfile.photoURL);
 
     showScreen("home");
+    loadHiddenChats();
     loadConversations();
 
   } catch (error) {
@@ -492,6 +503,38 @@ onAuthStateChanged(auth, async function(user) {
     alert("Gagal memuat profil: " + error.message);
   }
 });
+
+// MEMUAT CHAT YANG DISEMBUNYIKAN
+function loadHiddenChats() {
+  if (!currentUser) return;
+
+  hiddenChatsLoaded = false;
+
+  const hiddenChatsRef = collection(
+    db,
+    "users",
+    currentUser.uid,
+    "hiddenChats"
+  );
+
+  stopHiddenChats = onSnapshot(
+    hiddenChatsRef,
+    function(snapshot) {
+      hiddenChats.clear();
+
+      snapshot.forEach(function(item) {
+        hiddenChats.set(item.id, item.data().hiddenAt);
+      });
+
+      hiddenChatsLoaded = true;
+      renderConversations();
+    },
+    function(error) {
+      console.error("Gagal memuat chat tersembunyi:", error);
+      alert("Gagal memuat daftar chat: " + error.message);
+    }
+  );
+}
 
 // MEMUAT DAFTAR RUANG
 function loadConversations() {
@@ -606,6 +649,11 @@ function renderConversations() {
   const list = document.getElementById("conversationList");
   list.innerHTML = "";
 
+  if (!hiddenChatsLoaded) {
+    list.textContent = "Memuat percakapan...";
+    return;
+  }
+
   const kataKunci = searchInput.value.trim().toLowerCase();
 
   const filtered = roomsCache.filter(function(room) {
@@ -614,6 +662,20 @@ function renderConversations() {
 
     const cocokCari =
       room.id.toLowerCase().includes(kataKunci);
+
+    const waktuDisembunyikan = hiddenChats.get(room.id);
+    const pesanTerakhir = latestMessages.get(room.id);
+
+    if (waktuDisembunyikan) {
+      const waktuHapus = waktuDisembunyikan.toMillis
+        ? waktuDisembunyikan.toMillis()
+        : 0;
+      const waktuPesan = pesanTerakhir?.createdAt?.toMillis?.() || 0;
+
+      if (!pesanTerakhir || waktuPesan <= waktuHapus) {
+        return false;
+      }
+    }
 
     return cocokFilter && cocokCari;
   });
@@ -651,9 +713,12 @@ function renderConversations() {
   }
 
   filtered.forEach(function(room) {
+    const card = document.createElement("div");
+    card.className = "menu-card";
+
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "menu-card";
+    button.className = "conversation-open";
 
     const content = document.createElement("span");
     content.style.flex = "1";
@@ -664,7 +729,6 @@ function renderConversations() {
 
     const detail = document.createElement("small");
     const lastMessage = latestMessages.get(room.id);
-
     detail.textContent = lastMessage
       ? lastMessage.text || "Pesan"
       : "Belum ada pesan";
@@ -681,8 +745,45 @@ function renderConversations() {
       openRoom(room.id);
     });
 
-    list.appendChild(button);
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "delete-chat-button";
+    deleteButton.textContent = "⋯";
+    deleteButton.title = "Hapus chat";
+
+    deleteButton.addEventListener("click", function(event) {
+      event.stopPropagation();
+      hideChat(room.id);
+    });
+
+    card.append(button, deleteButton);
+    list.appendChild(card);
   });
+}
+
+// SEMBUNYIKAN CHAT DARI DAFTAR AKUN SENDIRI
+async function hideChat(roomId) {
+  if (!currentUser) return;
+
+  const yakin = confirm(
+    "Hapus seluruh chat ini dari daftar kamu?\n\n" +
+    "Chat dan akun lawan bicara tidak akan terhapus."
+  );
+
+  if (!yakin) return;
+
+  try {
+    await setDoc(
+      doc(db, "users", currentUser.uid, "hiddenChats", roomId),
+      {
+        roomId: roomId,
+        hiddenAt: serverTimestamp()
+      }
+    );
+  } catch (error) {
+    console.error("Gagal menyembunyikan chat:", error);
+    alert("Chat gagal dihapus dari daftar: " + error.message);
+  }
 }
 
 // PENCARIAN CHAT
@@ -961,9 +1062,39 @@ function batalBalasPesan() {
 
 cancelReply.addEventListener("click", batalBalasPesan);
 
+// SEMBUNYIKAN PESAN UNTUK AKUN SENDIRI
+async function sembunyikanPesanUntukSaya(roomId, messageId) {
+  if (!currentUser) return;
+
+  const yakin = confirm(
+    "Hapus pesan ini dari tampilan akun kamu? Pesan asli tetap terlihat oleh lawan chat."
+  );
+
+  if (!yakin) return;
+
+  const hiddenId = roomId + "_" + messageId;
+
+  try {
+    await setDoc(
+      doc(db, "users", currentUser.uid, "hiddenMessages", hiddenId),
+      {
+        roomId: roomId,
+        messageId: messageId,
+        hiddenAt: serverTimestamp()
+      }
+    );
+  } catch (error) {
+    console.error("Gagal menyembunyikan pesan:", error);
+    alert("Gagal menyembunyikan pesan: " + error.message);
+  }
+}
+
 // BUKA RUANG CHAT
 function openRoom(roomId) {
   if (stopMessages) stopMessages();
+  if (stopHiddenMessages) stopHiddenMessages();
+  stopHiddenMessages = null;
+  hiddenMessageIds.clear();
 
   if (stopPartnerProfile) {
     stopPartnerProfile();
@@ -1019,6 +1150,34 @@ function openRoom(roomId) {
 
   messages.innerHTML = "";
 
+  // MEMUAT PESAN YANG DISEMBUNYIKAN AKUN INI
+  const hiddenQuery = query(
+    collection(db, "users", currentUser.uid, "hiddenMessages"),
+    where("roomId", "==", roomId)
+  );
+
+  stopHiddenMessages = onSnapshot(
+    hiddenQuery,
+    function(snapshot) {
+      hiddenMessageIds = new Set(
+        snapshot.docs.map(function(item) {
+          return item.data().messageId;
+        })
+      );
+
+      messages.querySelectorAll(".message-bubble[data-message-id]")
+        .forEach(function(bubble) {
+          if (hiddenMessageIds.has(bubble.dataset.messageId)) {
+            bubble.remove();
+          }
+        });
+    },
+    function(error) {
+      console.error("Gagal memuat pesan tersembunyi:", error);
+      alert("Gagal memuat pesan tersembunyi: " + error.message);
+    }
+  );
+
   const pesanQuery = query(
     collection(db, "rooms", roomId, "messages"),
     orderBy("createdAt", "asc")
@@ -1042,12 +1201,31 @@ function openRoom(roomId) {
         // Tandai pesan dari lawan chat sebagai sudah dibaca
         tandaiPesanDibaca(roomId, item.id, data);
 
+        // Lewati pesan yang disembunyikan akun ini
+        if (hiddenMessageIds.has(item.id)) return;
+
         const milikSaya = data.senderId === currentUser.uid;
 
         const bubble = document.createElement("div");
         bubble.className =
           "message-bubble " +
           (milikSaya ? "sent" : "received");
+
+        bubble.dataset.messageId = item.id;
+
+        const tombolMenuPesan = document.createElement("button");
+        tombolMenuPesan.type = "button";
+        tombolMenuPesan.className = "message-delete-button";
+        tombolMenuPesan.textContent = "⋯";
+        tombolMenuPesan.title = "Hapus untuk saya";
+        tombolMenuPesan.setAttribute("aria-label", "Hapus untuk saya");
+
+        tombolMenuPesan.addEventListener("click", function(event) {
+          event.stopPropagation();
+          sembunyikanPesanUntukSaya(roomId, item.id);
+        });
+
+        bubble.appendChild(tombolMenuPesan);
 
         if (stickerEmojis.includes(data.text)) {
           bubble.classList.add("sticker-message");
@@ -1317,9 +1495,12 @@ chatInput.addEventListener("input", function() {
 document.getElementById("backHome")
   .addEventListener("click", function() {
     if (stopMessages) stopMessages();
+    if (stopHiddenMessages) stopHiddenMessages();
     if (stopPartnerProfile) stopPartnerProfile();
 
     stopMessages = null;
+    stopHiddenMessages = null;
+    hiddenMessageIds.clear();
     stopPartnerProfile = null;
     currentRoomId = null;
 
@@ -1330,8 +1511,15 @@ document.getElementById("backHome")
 async function logout() {
   try {
     if (stopMessages) stopMessages();
+    if (stopHiddenMessages) stopHiddenMessages();
     if (stopPartnerProfile) stopPartnerProfile();
     if (stopRooms) stopRooms();
+
+    stopMessages = null;
+    stopHiddenMessages = null;
+    hiddenMessageIds.clear();
+    stopPartnerProfile = null;
+    stopRooms = null;
 
     clearLatestListeners();
 

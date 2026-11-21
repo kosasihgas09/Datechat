@@ -814,3 +814,58 @@ button {
   color: #cbd5e1;
   font-size: 13px;
 }
+
+/* MENU PESAN: HAPUS UNTUK SAYA */
+.message-bubble .message-delete-button {
+  display: flex !important;
+  visibility: visible !important;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  margin: -4px -5px 5px auto;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 8px;
+  background: rgba(0,0,0,0.25);
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+  opacity: 1;
+  cursor: pointer;
+}
+
+.message-bubble .message-delete-button:active {
+  background: rgba(0,0,0,0.5);
+  transform: scale(0.95);
+}
+
+/* TOMBOL BUKA DAN HAPUS CHAT */
+#conversationList .conversation-open {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 13px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+#conversationList .delete-chat-button {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 25px;
+  cursor: pointer;
+}
+
+#conversationList .delete-chat-button:active {
+  opacity: 0.65;
+}
