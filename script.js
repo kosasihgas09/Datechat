@@ -46,6 +46,19 @@ const replyPreviewName = document.getElementById("replyPreviewName");
 const replyPreviewText = document.getElementById("replyPreviewText");
 const cancelReply = document.getElementById("cancelReply");
 
+// ELEMEN PROFIL
+const openProfileButton = document.getElementById("openProfile");
+const profilePanel = document.getElementById("profilePanel");
+const closeProfileButton = document.getElementById("closeProfile");
+const profileAvatar = document.getElementById("profileAvatar");
+const profileNameInput = document.getElementById("profileNameInput");
+const chooseProfilePhotoButton = document.getElementById("chooseProfilePhoto");
+const takeProfilePhotoButton = document.getElementById("takeProfilePhoto");
+const profilePhotoInput = document.getElementById("profilePhotoInput");
+const profileCameraInput = document.getElementById("profileCameraInput");
+const profileStatus = document.getElementById("profileStatus");
+const saveProfileButton = document.getElementById("saveProfileButton");
+
 let selectedReply = null;
 
 const emojiList = [
@@ -87,6 +100,14 @@ let roomsCache = [];
 let latestMessages = new Map();
 let latestUnsubs = new Map();
 let deliveryUnsubs = new Map();
+
+// DATA PROFIL
+let currentProfile = {
+  displayName: "",
+  photoURL: ""
+};
+let selectedProfileFile = null;
+let stopPartnerProfile = null;
 
 // TAMPILKAN HALAMAN
 function showScreen(screen) {
@@ -168,16 +189,157 @@ function clearLatestListeners() {
   latestMessages.clear();
 }
 
+// TAMPILKAN FOTO PROFIL
+function tampilkanAvatar(container, photoURL) {
+  container.replaceChildren();
+
+  if (photoURL) {
+    const img = document.createElement("img");
+    img.src = photoURL;
+    img.alt = "Foto profil";
+    img.onerror = function() {
+      container.textContent = "👤";
+    };
+    container.appendChild(img);
+  } else {
+    container.textContent = "👤";
+  }
+}
+
+// BUKA DAN TUTUP PANEL PROFIL
+openProfileButton.addEventListener("click", function() {
+  profilePanel.hidden = false;
+});
+
+closeProfileButton.addEventListener("click", function() {
+  profilePanel.hidden = true;
+});
+
+// PILIH FOTO PROFIL
+chooseProfilePhotoButton.addEventListener("click", function() {
+  profilePhotoInput.click();
+});
+
+takeProfilePhotoButton.addEventListener("click", function() {
+  profileCameraInput.click();
+});
+
+function prosesFotoProfil(file) {
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    profileStatus.textContent = "Pilih file gambar.";
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    profileStatus.textContent = "Ukuran foto maksimal 5 MB.";
+    return;
+  }
+
+  selectedProfileFile = file;
+  const previewURL = URL.createObjectURL(file);
+  tampilkanAvatar(profileAvatar, previewURL);
+  profileStatus.textContent = "Foto siap digunakan. Tekan Simpan Profil nanti.";
+}
+
+profilePhotoInput.addEventListener("change", function() {
+  prosesFotoProfil(this.files[0]);
+});
+
+profileCameraInput.addEventListener("change", function() {
+  prosesFotoProfil(this.files[0]);
+});
+
+// UNGGAH FOTO KE CLOUDINARY
+async function unggahFotoProfil(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "datechat_profiles");
+
+  const response = await fetch(
+    "https://api.cloudinary.com/v1_1/snob7efz/image/upload",
+    {
+      method: "POST",
+      body: formData
+    }
+  );
+
+  const hasil = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      hasil.error?.message || "Gagal mengunggah foto profil."
+    );
+  }
+
+  return hasil.secure_url;
+}
+
+// SIMPAN NAMA DAN FOTO PROFIL
+saveProfileButton.addEventListener("click", async function() {
+  if (!currentUser) return;
+
+  const displayName = profileNameInput.value.trim();
+
+  if (!displayName) {
+    profileStatus.textContent = "Nama tampilan tidak boleh kosong.";
+    return;
+  }
+
+  if (displayName.length > 40) {
+    profileStatus.textContent = "Nama maksimal 40 karakter.";
+    return;
+  }
+
+  saveProfileButton.disabled = true;
+  profileStatus.textContent = "Menyimpan profil...";
+
+  try {
+    let photoURL = currentProfile.photoURL;
+
+    if (selectedProfileFile) {
+      profileStatus.textContent = "Mengunggah foto...";
+      photoURL = await unggahFotoProfil(selectedProfileFile);
+    }
+
+    await updateDoc(doc(db, "publicProfiles", currentUser.uid), {
+      displayName: displayName,
+      photoURL: photoURL,
+      updatedAt: serverTimestamp()
+    });
+
+    currentProfile = {
+      displayName: displayName,
+      photoURL: photoURL
+    };
+
+    selectedProfileFile = null;
+    profilePhotoInput.value = "";
+    profileCameraInput.value = "";
+
+    tampilkanAvatar(profileAvatar, photoURL);
+    profileStatus.textContent = "Profil berhasil disimpan.";
+  } catch (error) {
+    console.error(error);
+    profileStatus.textContent = "Gagal menyimpan: " + error.message;
+  } finally {
+    saveProfileButton.disabled = false;
+  }
+});
+
 // STATUS LOGIN
 onAuthStateChanged(auth, async function(user) {
   currentUser = user;
 
   if (stopMessages) stopMessages();
+  if (stopPartnerProfile) stopPartnerProfile();
   if (stopRooms) stopRooms();
 
   clearLatestListeners();
 
   stopMessages = null;
+  stopPartnerProfile = null;
   stopRooms = null;
   currentRoomId = null;
   roomsCache = [];
@@ -197,6 +359,38 @@ onAuthStateChanged(auth, async function(user) {
         email: user.email
       });
     }
+
+    // MUAT PROFIL PUBLIK
+    const publicProfileRef = doc(db, "publicProfiles", user.uid);
+    const publicProfileSnap = await getDoc(publicProfileRef);
+
+    if (!publicProfileSnap.exists()) {
+      const namaAwal = (user.email || "Pengguna")
+        .split("@")[0]
+        .slice(0, 40);
+
+      await setDoc(publicProfileRef, {
+        uid: user.uid,
+        displayName: namaAwal,
+        photoURL: "",
+        updatedAt: serverTimestamp()
+      });
+
+      currentProfile = {
+        displayName: namaAwal,
+        photoURL: ""
+      };
+    } else {
+      const dataProfil = publicProfileSnap.data();
+
+      currentProfile = {
+        displayName: dataProfil.displayName || "Pengguna",
+        photoURL: dataProfil.photoURL || ""
+      };
+    }
+
+    profileNameInput.value = currentProfile.displayName;
+    tampilkanAvatar(profileAvatar, currentProfile.photoURL);
 
     showScreen("home");
     loadConversations();
@@ -568,11 +762,57 @@ cancelReply.addEventListener("click", batalBalasPesan);
 function openRoom(roomId) {
   if (stopMessages) stopMessages();
 
+  if (stopPartnerProfile) {
+    stopPartnerProfile();
+    stopPartnerProfile = null;
+  }
+
   currentRoomId = roomId;
   showScreen("chat");
 
-  document.getElementById("partnerName").textContent =
-    "Chat " + roomId.slice(0, 8);
+  const partnerNameElement = document.getElementById("partnerName");
+  const partnerAvatarElement = document.getElementById("partnerAvatar");
+
+  partnerNameElement.textContent = "Memuat profil...";
+  tampilkanAvatar(partnerAvatarElement, "");
+
+  const ruangProfil = roomsCache.find(function(room) {
+    return room.id === roomId;
+  });
+
+  const partnerUid = ruangProfil && Array.isArray(ruangProfil.members)
+    ? ruangProfil.members.find(function(uid) {
+        return uid !== currentUser.uid;
+      })
+    : null;
+
+  if (partnerUid) {
+    stopPartnerProfile = onSnapshot(
+      doc(db, "publicProfiles", partnerUid),
+      function(snapshot) {
+        if (!snapshot.exists()) {
+          partnerNameElement.textContent = "Pengguna DateChat";
+          tampilkanAvatar(partnerAvatarElement, "");
+          return;
+        }
+
+        const dataProfilTeman = snapshot.data();
+        partnerNameElement.textContent =
+          dataProfilTeman.displayName || "Pengguna DateChat";
+
+        tampilkanAvatar(
+          partnerAvatarElement,
+          dataProfilTeman.photoURL || ""
+        );
+      },
+      function(error) {
+        console.error("Gagal memuat profil teman:", error);
+        partnerNameElement.textContent = "Pengguna DateChat";
+      }
+    );
+  } else {
+    partnerNameElement.textContent = "Menunggu teman bergabung";
+  }
 
   messages.innerHTML = "";
 
@@ -874,8 +1114,10 @@ chatInput.addEventListener("input", function() {
 document.getElementById("backHome")
   .addEventListener("click", function() {
     if (stopMessages) stopMessages();
+    if (stopPartnerProfile) stopPartnerProfile();
 
     stopMessages = null;
+    stopPartnerProfile = null;
     currentRoomId = null;
 
     showScreen("home");
@@ -885,6 +1127,7 @@ document.getElementById("backHome")
 async function logout() {
   try {
     if (stopMessages) stopMessages();
+    if (stopPartnerProfile) stopPartnerProfile();
     if (stopRooms) stopRooms();
 
     clearLatestListeners();

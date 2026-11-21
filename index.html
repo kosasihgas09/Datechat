@@ -48,6 +48,8 @@
       </div>
 
       <div class="header-actions">
+        <button type="button" id="openProfile"
+          class="icon-button" aria-label="Profil saya">👤</button>
         <button type="button" id="openPrivateChat"
           class="icon-button" aria-label="Chat baru">＋</button>
 
@@ -55,6 +57,44 @@
           class="icon-button" aria-label="Keluar">↗</button>
       </div>
     </header>
+
+    <!-- PANEL PROFIL -->
+    <section id="profilePanel" class="profile-panel" hidden>
+      <div class="profile-card">
+        <div class="profile-heading">
+          <h2>Profil Saya</h2>
+          <button type="button" id="closeProfile"
+            aria-label="Tutup profil">✕</button>
+        </div>
+
+        <div class="profile-avatar" id="profileAvatar">👤</div>
+
+        <label for="profileNameInput">Nama tampilan</label>
+        <input id="profileNameInput" type="text"
+          maxlength="40" placeholder="Masukkan nama kamu">
+
+        <label>Foto profil</label>
+        <div class="profile-photo-actions">
+          <button type="button" id="chooseProfilePhoto">
+            🖼️ Pilih dari Galeri
+          </button>
+          <button type="button" id="takeProfilePhoto">
+            📸 Ambil Foto
+          </button>
+        </div>
+
+        <input type="file" id="profilePhotoInput"
+          accept="image/*" hidden>
+        <input type="file" id="profileCameraInput"
+          accept="image/*" capture="user" hidden>
+
+        <p id="profileStatus" aria-live="polite"></p>
+
+        <button type="button" id="saveProfileButton">
+          Simpan Profil
+        </button>
+      </div>
+    </section>
 
     <!-- PENCARIAN -->
     <section class="search-section">
@@ -106,7 +146,7 @@
       <button type="button" id="backHome"
         class="back-button" aria-label="Kembali">‹</button>
 
-      <div class="avatar">❤️</div>
+      <div class="avatar" id="partnerAvatar">👤</div>
 
       <div class="chat-person">
         <strong id="partnerName">Pasangan Chat</strong>
