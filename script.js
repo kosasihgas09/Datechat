@@ -37,6 +37,8 @@ const registerButton = document.getElementById("registerButton");
 const chatForm = document.getElementById("chatForm");
 
 const messages = document.getElementById("messages");
+const messageSearchInput = document.getElementById("messageSearchInput");
+
 const chatInput = document.getElementById("chatInput");
 const pickerPanel = document.getElementById("pickerPanel");
 const suggestionPanel = document.getElementById("suggestionPanel");
@@ -120,7 +122,42 @@ let selectedProfileFile = null;
 let stopPartnerProfile = null;
 let stopFriendRequests = null;
 let stopFriendships = null;
+let friendProfiles = [];
+let searchTimer = null;
+let searchRunId = 0;
+let searchMessageMatches = new Map();
 
+
+// CACHE DAN PENCARIAN PESAN
+function terapkanPencarianPesan() {
+  if (!messageSearchInput || !currentRoomId) return;
+
+  const kataKunci = messageSearchInput.value.trim().toLowerCase();
+  let cache = searchMessageMatches.get(currentRoomId);
+
+  if (!cache || cache.term !== kataKunci) {
+    const idsCocok = new Set();
+
+    messages.querySelectorAll(".message-bubble[data-message-id]")
+      .forEach(function(bubble) {
+        const elemenTeks = bubble.querySelector(".message-text");
+        const teks = elemenTeks ? elemenTeks.textContent.toLowerCase() : "";
+
+        if (!kataKunci || teks.includes(kataKunci)) {
+          idsCocok.add(bubble.dataset.messageId);
+        }
+      });
+
+    cache = { term: kataKunci, ids: idsCocok };
+    searchMessageMatches.set(currentRoomId, cache);
+  }
+
+  messages.querySelectorAll(".message-bubble[data-message-id]")
+    .forEach(function(bubble) {
+      bubble.hidden = Boolean(kataKunci) &&
+        !cache.ids.has(bubble.dataset.messageId);
+    });
+}
 
 // TAMPILKAN HALAMAN
 function showScreen(screen) {
@@ -740,7 +777,8 @@ function loadFriendships() {
 
       daftar.replaceChildren();
 
-      const hasil = teman.filter(Boolean);
+      friendProfiles = teman.filter(Boolean);
+      const hasil = friendProfiles;
 
       if (hasil.length === 0) {
         daftar.textContent = "Belum ada teman.";
@@ -1063,6 +1101,9 @@ async function hideChat(roomId) {
 
 // PENCARIAN CHAT
 searchInput.addEventListener("input", renderConversations);
+if (messageSearchInput) {
+  messageSearchInput.addEventListener("input", terapkanPencarianPesan);
+}
 
 // BUAT RUANG CHAT
 async function createPrivateRoom() {
@@ -1472,6 +1513,8 @@ function openRoom(roomId) {
   }
 
   currentRoomId = roomId;
+  searchMessageMatches.delete(roomId);
+  if (messageSearchInput) messageSearchInput.value = "";
   showScreen("chat");
 
   const partnerNameElement = document.getElementById("partnerName");
@@ -1556,6 +1599,7 @@ function openRoom(roomId) {
   stopMessages = onSnapshot(
     pesanQuery,
     function(snapshot) {
+      searchMessageMatches.delete(roomId);
       messages.innerHTML = "";
 
       if (snapshot.empty) {
@@ -1680,6 +1724,7 @@ function openRoom(roomId) {
       });
 
       messages.scrollTop = messages.scrollHeight;
+      terapkanPencarianPesan();
     },
     function(error) {
       console.error("Gagal memuat pesan:", error);

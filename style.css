@@ -1032,3 +1032,76 @@ button {
   background: var(--panel2);
   color: var(--text);
 }
+
+/* TAMPILAN MINIMALIS PANEL NOTIFIKASI */
+#notificationsPanel {
+  padding: 8px 12px;
+}
+
+#notificationsPanel .profile-card {
+  padding: 14px;
+  max-width: 480px;
+}
+
+#notificationsPanel .profile-heading {
+  margin-bottom: 10px;
+}
+
+#notificationsPanel .profile-heading h2 {
+  font-size: 17px;
+}
+
+#notificationsPanel .profile-heading button {
+  font-size: 20px;
+}
+
+#notificationsPanel .section-heading {
+  padding: 9px 0 5px;
+}
+
+#notificationsPanel .section-heading h3 {
+  font-size: 13px;
+}
+
+#notificationsPanel #friendRequestList,
+#notificationsPanel #friendList {
+  padding: 0;
+  font-size: 12px;
+}
+
+#notificationsPanel .friend-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+}
+
+#notificationsPanel .friend-search-card > div {
+  grid-column: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#notificationsPanel .friend-search-card strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+#notificationsPanel .friend-search-card p {
+  margin: 0;
+  font-size: 11px;
+}
+
+#notificationsPanel .friend-search-card button {
+  grid-column: auto;
+  grid-row: auto;
+  padding: 6px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  white-space: nowrap;
+}
