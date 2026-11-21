@@ -144,6 +144,14 @@
     <input type="file" id="videoInput" accept="video/*" hidden>
 
     <form class="chat-input-area" id="chatForm">
+      <div id="replyPreview" class="reply-preview" hidden>
+        <div class="reply-preview-content">
+          <strong id="replyPreviewName">Membalas pesan</strong>
+          <span id="replyPreviewText"></span>
+        </div>
+        <button type="button" id="cancelReply" aria-label="Batal membalas">✕</button>
+      </div>
+
       <div class="chat-compose-row">
         <button type="button" id="mediaToggle"
           class="picker-button" aria-label="Lampiran">＋</button>

@@ -599,3 +599,67 @@ button {
 .message-status.read {
   color: #53bdeb;
 }
+
+/* FITUR BALAS PESAN */
+.reply-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--panel2);
+  border-left: 4px solid #00a884;
+  border-radius: 8px;
+}
+
+.reply-preview-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+
+.reply-preview-content strong {
+  color: #00a884;
+  font-size: 12px;
+}
+
+.reply-preview-content span {
+  color: white;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cancelReply {
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* KUTIPAN PESAN YANG DIBALAS */
+.reply-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  margin-bottom: 7px;
+  border-left: 3px solid #00a884;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.18);
+  min-width: 0;
+}
+
+.reply-quote strong {
+  color: #00c99a;
+  font-size: 11px;
+}
+
+.reply-quote span {
+  color: #e0e0e0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

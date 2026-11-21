@@ -41,6 +41,12 @@ const emojiToggle = document.getElementById("emojiToggle");
 const stickerToggle = document.getElementById("stickerToggle");
 const mediaToggle = document.getElementById("mediaToggle");
 const mediaPanel = document.getElementById("mediaPanel");
+const replyPreview = document.getElementById("replyPreview");
+const replyPreviewName = document.getElementById("replyPreviewName");
+const replyPreviewText = document.getElementById("replyPreviewText");
+const cancelReply = document.getElementById("cancelReply");
+
+let selectedReply = null;
 
 const emojiList = [
   "😀", "😂", "🥰", "😍", "😘", "😭",
@@ -534,6 +540,30 @@ function tandaiPesanDibaca(roomId, messageId, data) {
   });
 }
 
+// FITUR BALAS PESAN
+function pilihPesanUntukDibalas(messageId, data) {
+  selectedReply = {
+    messageId: messageId,
+    senderId: data.senderId,
+    text: data.text || ""
+  };
+
+  replyPreviewName.textContent =
+    data.senderId === currentUser.uid ? "Membalas pesan Anda" : "Membalas pesan";
+
+  replyPreviewText.textContent = data.text || "(pesan kosong)";
+  replyPreview.hidden = false;
+  chatInput.focus();
+}
+
+function batalBalasPesan() {
+  selectedReply = null;
+  replyPreview.hidden = true;
+  replyPreviewText.textContent = "";
+}
+
+cancelReply.addEventListener("click", batalBalasPesan);
+
 // BUKA RUANG CHAT
 function openRoom(roomId) {
   if (stopMessages) stopMessages();
@@ -580,10 +610,49 @@ function openRoom(roomId) {
           bubble.classList.add("sticker-message");
         }
 
+        // Tampilkan kutipan pesan yang dibalas
+        if (data.replyTo) {
+          const kutipan = document.createElement("div");
+          kutipan.className = "reply-quote";
+
+          const namaKutipan = document.createElement("strong");
+          namaKutipan.textContent =
+            data.replyTo.senderId === currentUser.uid
+              ? "Pesan Anda"
+              : "Pesan lawan chat";
+
+          const teksKutipan = document.createElement("span");
+          teksKutipan.textContent = data.replyTo.text || "(pesan kosong)";
+
+          kutipan.appendChild(namaKutipan);
+          kutipan.appendChild(teksKutipan);
+          bubble.appendChild(kutipan);
+        }
+
         const isiPesan = document.createElement("div");
         isiPesan.className = "message-text";
         isiPesan.textContent = data.text || "";
         bubble.appendChild(isiPesan);
+
+        // Geser pesan ke kanan untuk membalas
+        let posisiAwalX = 0;
+        let posisiAwalY = 0;
+
+        bubble.addEventListener("touchstart", function(event) {
+          const sentuhan = event.touches[0];
+          posisiAwalX = sentuhan.clientX;
+          posisiAwalY = sentuhan.clientY;
+        }, { passive: true });
+
+        bubble.addEventListener("touchend", function(event) {
+          const sentuhan = event.changedTouches[0];
+          const selisihX = sentuhan.clientX - posisiAwalX;
+          const selisihY = sentuhan.clientY - posisiAwalY;
+
+          if (selisihX > 65 && Math.abs(selisihX) > Math.abs(selisihY)) {
+            pilihPesanUntukDibalas(item.id, data);
+          }
+        }, { passive: true });
 
         if (milikSaya) {
           const ruang = roomsCache.find(function(room) {
@@ -636,29 +705,43 @@ chatForm.addEventListener("submit", async function(event) {
 
   if (!text || !currentUser || !currentRoomId) return;
 
+  const balasanAktif = selectedReply;
+
+  const pesanBaru = {
+    senderId: currentUser.uid,
+    text: text,
+    createdAt: serverTimestamp(),
+    deliveredTo: [],
+    readBy: []
+  };
+
+  if (balasanAktif) {
+    pesanBaru.replyTo = {
+      messageId: balasanAktif.messageId,
+      senderId: balasanAktif.senderId,
+      text: balasanAktif.text
+    };
+  }
+
   try {
+    await addDoc(
+      collection(db, "rooms", currentRoomId, "messages"),
+      pesanBaru
+    );
+
     chatInput.value = "";
     chatInput.style.height = "44px";
     suggestionPanel.hidden = true;
 
-    await addDoc(
-      collection(db, "rooms", currentRoomId, "messages"),
-      {
-        senderId: currentUser.uid,
-        text: text,
-        createdAt: serverTimestamp(),
-        deliveredTo: [],
-        readBy: []
-      }
-    );
+    if (selectedReply === balasanAktif) {
+      batalBalasPesan();
+    }
 
   } catch (error) {
     console.error(error);
-    chatInput.value = text;
     alert("Pesan gagal dikirim: " + error.message);
   }
 });
-
 
 // MENU LAMPIRAN FOTO DAN VIDEO
 mediaToggle.addEventListener("click", function() {
