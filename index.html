@@ -128,9 +128,17 @@
     <div id="pickerPanel" class="picker-panel" hidden></div>
 
     <div id="mediaPanel" class="media-panel" hidden>
-      <label for="photoInput">📷 Foto</label>
-      <label for="videoInput">🎥 Video</label>
+      <label for="cameraPhotoInput">📸 Ambil Foto</label>
+      <label for="cameraVideoInput">🎬 Rekam Video</label>
+      <label for="photoInput">🖼️ Galeri Foto</label>
+      <label for="videoInput">🎥 Galeri Video</label>
     </div>
+
+    <input type="file" id="cameraPhotoInput"
+      accept="image/*" capture="environment" hidden>
+
+    <input type="file" id="cameraVideoInput"
+      accept="video/*" capture="environment" hidden>
 
     <input type="file" id="photoInput" accept="image/*" hidden>
     <input type="file" id="videoInput" accept="video/*" hidden>

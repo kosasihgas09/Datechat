@@ -851,5 +851,7 @@ function handleMedia(inputId, type) {
     });
 }
 
-handleMedia("photoInput", "foto");
-handleMedia("videoInput", "video");
+handleMedia("cameraPhotoInput", "foto dari kamera");
+handleMedia("cameraVideoInput", "video dari kamera");
+handleMedia("photoInput", "foto dari galeri");
+handleMedia("videoInput", "video dari galeri");
