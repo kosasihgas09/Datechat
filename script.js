@@ -4,6 +4,7 @@ import { auth, db } from "./firebase.js";
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   collection,
   query,
@@ -14,6 +15,7 @@ import {
   addDoc,
   updateDoc,
   runTransaction,
+  writeBatch,
   arrayUnion,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -116,6 +118,9 @@ let currentProfile = {
 };
 let selectedProfileFile = null;
 let stopPartnerProfile = null;
+let stopFriendRequests = null;
+let stopFriendships = null;
+
 
 // TAMPILKAN HALAMAN
 function showScreen(screen) {
@@ -428,6 +433,8 @@ onAuthStateChanged(auth, async function(user) {
   if (stopMessages) stopMessages();
   if (stopHiddenMessages) stopHiddenMessages();
   if (stopHiddenChats) stopHiddenChats();
+  if (stopFriendRequests) stopFriendRequests();
+  if (stopFriendships) stopFriendships();
   if (stopPartnerProfile) stopPartnerProfile();
   if (stopRooms) stopRooms();
 
@@ -435,6 +442,8 @@ onAuthStateChanged(auth, async function(user) {
 
   stopMessages = null;
   stopHiddenChats = null;
+  stopFriendRequests = null;
+  stopFriendships = null;
   hiddenChats.clear();
   hiddenChatsLoaded = false;
   stopPartnerProfile = null;
@@ -496,6 +505,8 @@ onAuthStateChanged(auth, async function(user) {
     showScreen("home");
     loadHiddenChats();
     loadConversations();
+    loadFriendRequests();
+    loadFriendships();
 
   } catch (error) {
     console.error(error);
@@ -503,6 +514,270 @@ onAuthStateChanged(auth, async function(user) {
     alert("Gagal memuat profil: " + error.message);
   }
 });
+
+
+// MEMUAT PERMINTAAN TEMAN MASUK
+function loadFriendRequests() {
+  if (!currentUser) return;
+
+  const daftar = document.getElementById("friendRequestList");
+  const permintaanQuery = query(
+    collection(db, "friendRequests"),
+    where("recipientId", "==", currentUser.uid)
+  );
+
+  stopFriendRequests = onSnapshot(
+    permintaanQuery,
+    async function(snapshot) {
+      const masuk = snapshot.docs.filter(function(item) {
+        return item.data().status === "pending";
+      });
+
+      const badge = document.getElementById("notificationBadge");
+      if (badge) {
+        badge.textContent = masuk.length > 99 ? "99+" : String(masuk.length);
+        badge.hidden = masuk.length === 0;
+      }
+
+      daftar.replaceChildren();
+
+      if (masuk.length === 0) {
+        daftar.textContent = "Belum ada permintaan teman.";
+        return;
+      }
+
+      for (const item of masuk) {
+        const data = item.data();
+        const profilSnap = await getDoc(
+          doc(db, "publicProfiles", data.senderId)
+        );
+
+        if (!currentUser) return;
+
+        const profil = profilSnap.exists() ? profilSnap.data() : {};
+        const kartu = document.createElement("div");
+        kartu.className = "friend-search-card";
+
+        const informasi = document.createElement("div");
+        const nama = document.createElement("strong");
+        nama.textContent = profil.displayName || "Pengguna DateChat";
+
+        const username = document.createElement("p");
+        username.textContent = profil.username
+          ? "@" + profil.username
+          : "Permintaan pertemanan";
+
+        informasi.append(nama, username);
+        kartu.appendChild(informasi);
+
+        const terima = document.createElement("button");
+        terima.type = "button";
+        terima.textContent = "Terima";
+        terima.addEventListener("click", function() {
+          acceptFriendRequest(item.id, data);
+        });
+
+        const tolak = document.createElement("button");
+        tolak.type = "button";
+        tolak.textContent = "Tolak";
+        tolak.addEventListener("click", async function() {
+          tolak.disabled = true;
+          try {
+            await updateDoc(doc(db, "friendRequests", item.id), {
+              status: "rejected",
+              updatedAt: serverTimestamp()
+            });
+          } catch (error) {
+            console.error(error);
+            alert("Gagal menolak permintaan: " + error.message);
+            tolak.disabled = false;
+          }
+        });
+
+        kartu.append(terima, tolak);
+        daftar.appendChild(kartu);
+      }
+    },
+    function(error) {
+      console.error("Gagal memuat permintaan teman:", error);
+      daftar.textContent = "Gagal memuat permintaan teman.";
+    }
+  );
+}
+
+// MENERIMA PERMINTAAN TEMAN
+async function acceptFriendRequest(requestId, data) {
+  if (!currentUser || currentUser.uid !== data.recipientId) return;
+
+  try {
+    const batch = writeBatch(db);
+    const requestRef = doc(db, "friendRequests", requestId);
+    const friendshipRef = doc(db, "friendships", requestId);
+
+    batch.set(friendshipRef, {
+      requestId: requestId,
+      senderId: data.senderId,
+      recipientId: data.recipientId,
+      members: [data.senderId, data.recipientId],
+      createdAt: serverTimestamp()
+    });
+
+    batch.update(requestRef, {
+      status: "accepted",
+      updatedAt: serverTimestamp()
+    });
+
+    await batch.commit();
+    alert("Permintaan teman diterima.");
+  } catch (error) {
+    console.error("Gagal menerima teman:", error);
+    alert("Gagal menerima permintaan: " + error.message);
+  }
+}
+
+// MEMBUKA ATAU MEMBUAT CHAT DENGAN TEMAN
+async function bukaChatDenganTeman(friendUid) {
+  if (!currentUser) return;
+
+  const uidSaya = currentUser.uid;
+
+  try {
+    const ruangSnap = await getDocs(query(
+      collection(db, "rooms"),
+      where("members", "array-contains", uidSaya)
+    ));
+
+    if (!currentUser || currentUser.uid !== uidSaya) return;
+
+    const ruangAda = ruangSnap.docs.find(function(item) {
+      const data = item.data();
+      return Array.isArray(data.members) &&
+        data.members.includes(friendUid);
+    });
+
+    let roomId;
+    let dataRuang;
+
+    if (ruangAda) {
+      roomId = ruangAda.id;
+      dataRuang = {
+        id: roomId,
+        ...ruangAda.data()
+      };
+    } else {
+      const ruangBaru = await addDoc(collection(db, "rooms"), {
+        type: "private",
+        members: [uidSaya, friendUid],
+        createdBy: uidSaya,
+        createdAt: serverTimestamp()
+      });
+
+      roomId = ruangBaru.id;
+      dataRuang = {
+        id: roomId,
+        type: "private",
+        members: [uidSaya, friendUid],
+        createdBy: uidSaya
+      };
+    }
+
+    if (!currentUser || currentUser.uid !== uidSaya) return;
+
+    const index = roomsCache.findIndex(function(room) {
+      return room.id === roomId;
+    });
+
+    if (index === -1) {
+      roomsCache.push(dataRuang);
+    } else {
+      roomsCache[index] = dataRuang;
+    }
+
+    updateLatestListeners();
+    renderConversations();
+    openRoom(roomId);
+
+  } catch (error) {
+    console.error("Gagal membuka chat teman:", error);
+    alert("Gagal membuka chat: " + error.message);
+  }
+}
+
+// MEMUAT DAFTAR TEMAN
+function loadFriendships() {
+  if (!currentUser) return;
+
+  const daftar = document.getElementById("friendList");
+  const temanQuery = query(
+    collection(db, "friendships"),
+    where("members", "array-contains", currentUser.uid)
+  );
+
+  stopFriendships = onSnapshot(
+    temanQuery,
+    async function(snapshot) {
+      const teman = await Promise.all(
+        snapshot.docs.map(async function(item) {
+          const data = item.data();
+          const friendUid = data.members.find(function(uid) {
+            return uid !== currentUser.uid;
+          });
+
+          if (!friendUid) return null;
+
+          const profilSnap = await getDoc(
+            doc(db, "publicProfiles", friendUid)
+          );
+
+          return {
+            uid: friendUid,
+            profil: profilSnap.exists() ? profilSnap.data() : {}
+          };
+        })
+      );
+
+      if (!currentUser) return;
+
+      daftar.replaceChildren();
+
+      const hasil = teman.filter(Boolean);
+
+      if (hasil.length === 0) {
+        daftar.textContent = "Belum ada teman.";
+        return;
+      }
+
+      hasil.forEach(function(item) {
+        const kartu = document.createElement("div");
+        kartu.className = "friend-search-card";
+
+        const nama = document.createElement("strong");
+        nama.textContent = item.profil.displayName || "Pengguna DateChat";
+
+        const username = document.createElement("p");
+        username.textContent = item.profil.username
+          ? "@" + item.profil.username
+          : "Teman DateChat";
+
+        kartu.append(nama, username);
+
+        const tombolChat = document.createElement("button");
+        tombolChat.type = "button";
+        tombolChat.textContent = "Chat";
+        tombolChat.addEventListener("click", function() {
+          bukaChatDenganTeman(item.uid);
+        });
+
+        kartu.appendChild(tombolChat);
+        daftar.appendChild(kartu);
+      });
+    },
+    function(error) {
+      console.error("Gagal memuat daftar teman:", error);
+      daftar.textContent = "Gagal memuat daftar teman.";
+    }
+  );
+}
 
 // MEMUAT CHAT YANG DISEMBUNYIKAN
 function loadHiddenChats() {
@@ -867,6 +1142,24 @@ async function joinPrivateRoom() {
   }
 }
 
+// PANEL NOTIFIKASI
+const notificationsPanel = document.getElementById("notificationsPanel");
+const openNotificationsButton = document.getElementById("openNotifications");
+const closeNotificationsButton = document.getElementById("closeNotifications");
+
+openNotificationsButton.addEventListener("click", function() {
+  notificationsPanel.hidden = !notificationsPanel.hidden;
+  openNotificationsButton.setAttribute(
+    "aria-expanded",
+    String(!notificationsPanel.hidden)
+  );
+});
+
+closeNotificationsButton.addEventListener("click", function() {
+  notificationsPanel.hidden = true;
+  openNotificationsButton.setAttribute("aria-expanded", "false");
+});
+
 // MENU CHAT BARU
 const newChatPanel = document.getElementById("newChatPanel");
 
@@ -967,6 +1260,83 @@ document.getElementById("findByUsername")
 
       informasi.append(nama, id);
       kartu.appendChild(informasi);
+
+      const uidTeman = pemilik.uid;
+      const uidSaya = currentUser.uid;
+      const idPermintaan = uidSaya + "_" + uidTeman;
+      const [daftarTeman, permintaanKeluar, permintaanMasuk] =
+        await Promise.all([
+          getDocs(query(
+            collection(db, "friendships"),
+            where("members", "array-contains", uidSaya)
+          )),
+          getDocs(query(
+            collection(db, "friendRequests"),
+            where("senderId", "==", uidSaya)
+          )),
+          getDocs(query(
+            collection(db, "friendRequests"),
+            where("recipientId", "==", uidSaya)
+          ))
+        ]);
+
+      const sudahTeman = daftarTeman.docs.some(function(item) {
+        return item.data().members.includes(uidTeman);
+      });
+
+      const keluar = permintaanKeluar.docs.find(function(item) {
+        return item.data().recipientId === uidTeman;
+      });
+
+      const masuk = permintaanMasuk.docs.find(function(item) {
+        return item.data().senderId === uidTeman;
+      });
+
+      const tombolTeman = document.createElement("button");
+      tombolTeman.type = "button";
+
+      if (sudahTeman) {
+        tombolTeman.textContent = "Sudah berteman";
+        tombolTeman.disabled = true;
+      } else if (keluar && keluar.data().status === "pending") {
+        tombolTeman.textContent = "Permintaan terkirim";
+        tombolTeman.disabled = true;
+      } else if (masuk && masuk.data().status === "pending") {
+        tombolTeman.textContent = "Ada permintaan masuk";
+        tombolTeman.disabled = true;
+      } else if (
+        (keluar && keluar.data().status === "rejected") ||
+        (masuk && masuk.data().status === "rejected")
+      ) {
+        tombolTeman.textContent = "Permintaan sebelumnya ditolak";
+        tombolTeman.disabled = true;
+      } else {
+        tombolTeman.textContent = "Tambah Teman";
+
+        tombolTeman.addEventListener("click", async function() {
+          tombolTeman.disabled = true;
+          tombolTeman.textContent = "Mengirim...";
+
+          try {
+            await setDoc(doc(db, "friendRequests", idPermintaan), {
+              senderId: uidSaya,
+              recipientId: uidTeman,
+              status: "pending",
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            tombolTeman.textContent = "Permintaan terkirim";
+          } catch (error) {
+            console.error("Gagal mengirim permintaan:", error);
+            tombolTeman.textContent = "Tambah Teman";
+            tombolTeman.disabled = false;
+            alert("Gagal mengirim permintaan: " + error.message);
+          }
+        });
+      }
+
+      kartu.appendChild(tombolTeman);
+
       hasil.appendChild(kartu);
 
     } catch (error) {

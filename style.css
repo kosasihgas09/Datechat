@@ -869,3 +869,166 @@ button {
 #conversationList .delete-chat-button:active {
   opacity: 0.65;
 }
+
+/* PANEL PERTEMANAN DAT ECHAT */
+#friendSection {
+  min-height: 0;
+  padding: 0 0 14px;
+  background: var(--bg);
+}
+
+#friendSection .section-heading {
+  padding: 14px 16px 7px;
+}
+
+#friendSection .section-heading h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+#friendRequestList,
+#friendList {
+  padding: 0 16px 4px;
+}
+
+#friendSection .friend-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px 12px;
+  margin: 7px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--text);
+}
+
+#friendSection .friend-search-card strong,
+#friendSection .friend-search-card p {
+  grid-column: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#friendSection .friend-search-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#friendSection .friend-search-card button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  padding: 8px 13px;
+  border: none;
+  border-radius: 10px;
+  background: var(--green);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#friendSection #friendRequestList .friend-search-card button + button {
+  grid-column: 2;
+  grid-row: auto;
+  background: var(--panel2);
+  color: var(--text);
+}
+
+#friendSection #friendRequestList .friend-search-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+#friendSection #friendRequestList .friend-search-card button:nth-of-type(2) {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#friendSection #friendRequestList .friend-search-card button:first-of-type {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+/* NOTIFIKASI DATECHAT */
+.notification-button {
+  position: relative;
+  cursor: pointer;
+}
+
+#notificationBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--panel);
+  border-radius: 20px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+#notificationBadge[hidden] {
+  display: none;
+}
+
+#notificationsPanel {
+  padding: 12px;
+}
+
+#notificationsPanel .profile-card {
+  max-width: 480px;
+}
+
+#notificationsPanel .section-heading {
+  padding: 12px 0 7px;
+}
+
+#notificationsPanel .section-heading h3 {
+  color: var(--text);
+  font-size: 14px;
+}
+
+#notificationsPanel #friendRequestList,
+#notificationsPanel #friendList {
+  padding: 0;
+}
+
+#notificationsPanel .friend-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#notificationsPanel .friend-search-card p {
+  color: var(--muted);
+}
+
+#notificationsPanel .friend-search-card button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--green);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#notificationsPanel #friendRequestList .friend-search-card button:nth-of-type(2) {
+  background: var(--panel2);
+  color: var(--text);
+}

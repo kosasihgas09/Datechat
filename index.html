@@ -48,6 +48,11 @@
       </div>
 
       <div class="header-actions">
+        <button type="button" id="openNotifications"
+          class="icon-button notification-button"
+          aria-label="Notifikasi" aria-expanded="false">
+          🔔<span id="notificationBadge" hidden>0</span>
+        </button>
         <button type="button" id="openProfile"
           class="icon-button" aria-label="Profil saya">👤</button>
         <button type="button" id="openPrivateChat"
@@ -133,6 +138,32 @@
       </div>
     </section>
 
+
+    <!-- PANEL NOTIFIKASI DAN PERTEMANAN -->
+    <section id="notificationsPanel" class="profile-panel" hidden>
+      <div class="profile-card">
+        <div class="profile-heading">
+          <h2>Notifikasi</h2>
+          <button type="button" id="closeNotifications"
+            aria-label="Tutup notifikasi">✕</button>
+        </div>
+
+        <div class="section-heading">
+          <h3>Permintaan Teman</h3>
+        </div>
+        <div id="friendRequestList">
+          <p>Belum ada permintaan teman.</p>
+        </div>
+
+        <div class="section-heading">
+          <h3>Teman Saya</h3>
+        </div>
+        <div id="friendList">
+          <p>Belum ada teman.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- PENCARIAN -->
     <section class="search-section">
       <input type="search" id="searchConversation"
@@ -149,6 +180,8 @@
         data-filter="private">Pribadi</button>
     </nav>
 
+
+
     <!-- DAFTAR CHAT -->
     <section class="conversation-section">
       <div class="section-heading">
@@ -164,6 +197,8 @@
         </div>
       </div>
     </section>
+
+
 
     <footer class="home-footer">
       <span>DateChat</span>
@@ -253,4 +288,4 @@
   <script type="module" src="script.js"></script>
 </body>
 </html>
- 
+
