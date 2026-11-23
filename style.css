@@ -1105,3 +1105,94 @@ button {
   font-size: 11px;
   white-space: nowrap;
 }
+
+
+/* JAM PADA SETIAP PESAN */
+.message-time {
+  display: block;
+  margin-top: 4px;
+  text-align: right;
+  font-size: 10px;
+  line-height: 1.2;
+  opacity: 0.75;
+}
+
+/* FOTO PROFIL UKURAN BESAR */
+#partnerAvatar {
+  cursor: pointer;
+}
+
+#partnerAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.88);
+}
+
+.photo-viewer[hidden] {
+  display: none;
+}
+
+.photo-viewer img {
+  display: block;
+  max-width: 92vw;
+  max-height: 82vh;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.photo-viewer-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+
+/* AVATAR BISA DIBUKA */
+#profileAvatar,
+#partnerAvatar {
+  cursor: pointer;
+}
+
+#profileAvatar img,
+#partnerAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.photo-viewer-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(72vw, 320px);
+  height: min(72vw, 320px);
+  border-radius: 50%;
+  background: var(--panel2);
+  font-size: min(38vw, 150px);
+}
+
+.photo-viewer-image[hidden],
+.photo-viewer-placeholder[hidden] {
+  display: none;
+}

@@ -256,6 +256,70 @@ function tampilkanAvatar(container, photoURL) {
   }
 }
 
+// PEMBESAR AVATAR PROFIL DAN LAWAN CHAT
+function bukaTampilanAvatar(container, keterangan) {
+  let viewer = document.getElementById("datechat-photo-viewer");
+
+  if (!viewer) {
+    viewer = document.createElement("div");
+    viewer.id = "datechat-photo-viewer";
+    viewer.className = "photo-viewer";
+    viewer.hidden = true;
+
+    const gambar = document.createElement("img");
+    gambar.className = "photo-viewer-image";
+    gambar.alt = "Foto profil";
+
+    const ikon = document.createElement("div");
+    ikon.className = "photo-viewer-placeholder";
+    ikon.textContent = "👤";
+
+    const tutup = document.createElement("button");
+    tutup.type = "button";
+    tutup.className = "photo-viewer-close";
+    tutup.textContent = "×";
+    tutup.setAttribute("aria-label", "Tutup foto");
+
+    tutup.addEventListener("click", function() {
+      viewer.hidden = true;
+    });
+
+    viewer.addEventListener("click", function(event) {
+      if (event.target === viewer) viewer.hidden = true;
+    });
+
+    viewer.appendChild(gambar);
+    viewer.appendChild(ikon);
+    viewer.appendChild(tutup);
+    document.body.appendChild(viewer);
+  }
+
+  const foto = container.querySelector("img");
+  const gambarBesar = viewer.querySelector(".photo-viewer-image");
+  const ikonBesar = viewer.querySelector(".photo-viewer-placeholder");
+
+  if (foto && foto.src) {
+    gambarBesar.src = foto.src;
+    gambarBesar.alt = keterangan;
+    gambarBesar.hidden = false;
+    ikonBesar.hidden = true;
+  } else {
+    gambarBesar.removeAttribute("src");
+    gambarBesar.hidden = true;
+    ikonBesar.hidden = false;
+  }
+
+  viewer.hidden = false;
+}
+
+profileAvatar.addEventListener("click", function() {
+  bukaTampilanAvatar(profileAvatar, "Foto profil saya");
+});
+
+document.getElementById("partnerAvatar").addEventListener("click", function() {
+  bukaTampilanAvatar(this, "Foto profil lawan chat");
+});
+
 // BUKA DAN TUTUP PANEL PROFIL
 openProfileButton.addEventListener("click", function() {
   profilePanel.hidden = false;
@@ -1668,6 +1732,14 @@ function openRoom(roomId) {
         isiPesan.className = "message-text";
         isiPesan.textContent = data.text || "";
         bubble.appendChild(isiPesan);
+
+        // JAM PESAN
+        const waktuPesan = document.createElement("span");
+        waktuPesan.className = "message-time";
+        waktuPesan.textContent = formatTime(data.createdAt);
+        if (waktuPesan.textContent) {
+          bubble.appendChild(waktuPesan);
+        }
 
         // Geser pesan ke kanan untuk membalas
         let posisiAwalX = 0;
