@@ -109,6 +109,8 @@ let stopRooms = null;
 
 let roomsCache = [];
 let latestMessages = new Map();
+let partnerProfiles = new Map();
+let partnerProfileUnsubs = new Map();
 let latestUnsubs = new Map();
 let deliveryUnsubs = new Map();
 
@@ -237,6 +239,12 @@ function clearLatestListeners() {
   latestUnsubs.clear();
   deliveryUnsubs.clear();
   latestMessages.clear();
+
+  partnerProfileUnsubs.forEach(function(unsubscribe) {
+    unsubscribe();
+  });
+  partnerProfileUnsubs.clear();
+  partnerProfiles.clear();
 }
 
 // TAMPILKAN FOTO PROFIL
@@ -900,11 +908,12 @@ function loadHiddenChats() {
       hiddenChats.clear();
 
       snapshot.forEach(function(item) {
-        hiddenChats.set(item.id, item.data().hiddenAt);
+        hiddenChats.set(item.id, item.data());
       });
 
       hiddenChatsLoaded = true;
       renderConversations();
+      if (currentRoomId && !chatScreen.hidden) openRoom(currentRoomId);
     },
     function(error) {
       console.error("Gagal memuat chat tersembunyi:", error);
@@ -955,6 +964,12 @@ function updateLatestListeners() {
       unsubscribe();
       latestUnsubs.delete(roomId);
       latestMessages.delete(roomId);
+
+      if (partnerProfileUnsubs.has(roomId)) {
+        partnerProfileUnsubs.get(roomId)();
+        partnerProfileUnsubs.delete(roomId);
+      }
+      partnerProfiles.delete(roomId);
     }
   });
 
@@ -966,6 +981,32 @@ function updateLatestListeners() {
   });
 
   roomsCache.forEach(function(room) {
+    const partnerUid = Array.isArray(room.members)
+      ? room.members.find(function(uid) {
+          return uid !== currentUser.uid;
+        })
+      : null;
+
+    if (partnerUid && !partnerProfileUnsubs.has(room.id)) {
+      const stopProfil = onSnapshot(
+        doc(db, "publicProfiles", partnerUid),
+        function(snapshot) {
+          partnerProfiles.set(
+            room.id,
+            snapshot.exists() ? snapshot.data() : {}
+          );
+          renderConversations();
+        },
+        function(error) {
+          console.error("Gagal memuat profil teman di daftar chat:", error);
+          partnerProfiles.set(room.id, {});
+          renderConversations();
+        }
+      );
+
+      partnerProfileUnsubs.set(room.id, stopProfil);
+    }
+
     // LISTENER PESAN TERAKHIR
     if (!latestUnsubs.has(room.id)) {
       const pesanTerakhirQuery = query(
@@ -1037,19 +1078,26 @@ function renderConversations() {
     const cocokFilter =
       currentFilter === "all" || room.type === currentFilter;
 
-    const cocokCari =
-      room.id.toLowerCase().includes(kataKunci);
+    const profilTeman = partnerProfiles.get(room.id) || {};
+    const namaTeman = (profilTeman.displayName || "").toLowerCase();
+    const usernameTeman = (profilTeman.username || "").toLowerCase();
 
-    const waktuDisembunyikan = hiddenChats.get(room.id);
+    const cocokCari =
+      room.id.toLowerCase().includes(kataKunci) ||
+      namaTeman.includes(kataKunci) ||
+      usernameTeman.includes(kataKunci);
+
+    const statusChat = hiddenChats.get(room.id) || {};
+    const waktuDihapus = statusChat.deletedAt;
     const pesanTerakhir = latestMessages.get(room.id);
 
-    if (waktuDisembunyikan) {
-      const waktuHapus = waktuDisembunyikan.toMillis
-        ? waktuDisembunyikan.toMillis()
+    if (waktuDihapus) {
+      const batasHapus = waktuDihapus.toMillis
+        ? waktuDihapus.toMillis()
         : 0;
       const waktuPesan = pesanTerakhir?.createdAt?.toMillis?.() || 0;
 
-      if (!pesanTerakhir || waktuPesan <= waktuHapus) {
+      if (!pesanTerakhir || waktuPesan <= batasHapus) {
         return false;
       }
     }
@@ -1101,8 +1149,17 @@ function renderConversations() {
     content.style.flex = "1";
     content.style.minWidth = "0";
 
+    const profilTeman = partnerProfiles.get(room.id) || {};
+
     const title = document.createElement("strong");
-    title.textContent = "Chat " + room.id.slice(0, 8);
+    title.textContent = profilTeman.displayName ||
+      "Memuat profil teman...";
+
+    const username = document.createElement("small");
+    username.className = "conversation-username";
+    username.textContent = profilTeman.username
+      ? "@" + profilTeman.username
+      : "";
 
     const detail = document.createElement("small");
     const lastMessage = latestMessages.get(room.id);
@@ -1115,7 +1172,7 @@ function renderConversations() {
       ? formatTime(lastMessage.createdAt)
       : "Baru";
 
-    content.append(title, detail);
+    content.append(title, username, detail);
     button.append(content, time);
 
     button.addEventListener("click", function() {
@@ -1128,25 +1185,81 @@ function renderConversations() {
     deleteButton.textContent = "⋯";
     deleteButton.title = "Hapus chat";
 
+    deleteButton.setAttribute("aria-label", "Menu chat");
     deleteButton.addEventListener("click", function(event) {
       event.stopPropagation();
-      hideChat(room.id);
+      menu.hidden = !menu.hidden;
     });
 
-    card.append(button, deleteButton);
+    const menu = document.createElement("div");
+    menu.className = "conversation-menu";
+    menu.hidden = true;
+
+    const bersihkanButton = document.createElement("button");
+    bersihkanButton.type = "button";
+    bersihkanButton.textContent = "Bersihkan riwayat";
+    bersihkanButton.addEventListener("click", function(event) {
+      event.stopPropagation();
+      menu.hidden = true;
+      bersihkanRiwayatChat(room.id);
+    });
+
+    const hapusButton = document.createElement("button");
+    hapusButton.type = "button";
+    hapusButton.textContent = "Hapus chat";
+    hapusButton.addEventListener("click", function(event) {
+      event.stopPropagation();
+      menu.hidden = true;
+      hapusChatDariDaftar(room.id);
+    });
+
+    menu.append(bersihkanButton, hapusButton);
+    card.append(button, deleteButton, menu);
     list.appendChild(card);
   });
 }
 
-// SEMBUNYIKAN CHAT DARI DAFTAR AKUN SENDIRI
-async function hideChat(roomId) {
+// EDIT PESAN TEKS MILIK SENDIRI
+async function editMessage(roomId, messageId, teksLama) {
+  if (!currentUser) return;
+
+  const teksBaru = prompt("Edit pesan:", teksLama);
+  if (teksBaru === null) return;
+
+  const teksBersih = teksBaru.trim();
+  if (!teksBersih) {
+    alert("Pesan tidak boleh kosong.");
+    return;
+  }
+  if (teksBersih === teksLama) return;
+  if (teksBersih.length > 2000) {
+    alert("Pesan maksimal 2.000 karakter.");
+    return;
+  }
+
+  try {
+    await updateDoc(
+      doc(db, "rooms", roomId, "messages", messageId),
+      {
+        text: teksBersih,
+        editedAt: serverTimestamp()
+      }
+    );
+  } catch (error) {
+    console.error("Gagal mengedit pesan:", error);
+    alert("Pesan gagal diedit: " + error.message);
+  }
+}
+
+// PENGELOLAAN RIWAYAT CHAT
+async function bersihkanRiwayatChat(roomId) {
   if (!currentUser) return;
 
   const yakin = confirm(
-    "Hapus seluruh chat ini dari daftar kamu?\n\n" +
-    "Chat dan akun lawan bicara tidak akan terhapus."
+    "Bersihkan riwayat chat ini?\\n\\n" +
+    "Pesan lama tidak akan tampil lagi di akun kamu.\\n" +
+    "Chat tetap ada di daftar. Riwayat teman tidak terpengaruh."
   );
-
   if (!yakin) return;
 
   try {
@@ -1154,12 +1267,42 @@ async function hideChat(roomId) {
       doc(db, "users", currentUser.uid, "hiddenChats", roomId),
       {
         roomId: roomId,
-        hiddenAt: serverTimestamp()
-      }
+        hiddenAt: serverTimestamp(),
+        deletedAt: null
+      },
+      { merge: true }
     );
   } catch (error) {
-    console.error("Gagal menyembunyikan chat:", error);
-    alert("Chat gagal dihapus dari daftar: " + error.message);
+    console.error("Gagal membersihkan riwayat:", error);
+    alert("Riwayat gagal dibersihkan: " + error.message);
+  }
+}
+
+async function hapusChatDariDaftar(roomId) {
+  if (!currentUser) return;
+
+  const yakin = confirm(
+    "Hapus chat ini dari daftar kamu?\\n\\n" +
+    "Riwayat lama tidak akan tampil lagi di akunmu.\\n" +
+    "Chat muncul kembali saat ada pesan baru.\\n" +
+    "Pertemanan dan riwayat teman tetap aman."
+  );
+  if (!yakin) return;
+
+  try {
+    const waktuHapus = serverTimestamp();
+    await setDoc(
+      doc(db, "users", currentUser.uid, "hiddenChats", roomId),
+      {
+        roomId: roomId,
+        hiddenAt: waktuHapus,
+        deletedAt: waktuHapus
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("Gagal menghapus chat dari daftar:", error);
+    alert("Chat gagal dihapus: " + error.message);
   }
 }
 
@@ -1630,6 +1773,11 @@ function openRoom(roomId) {
 
   messages.innerHTML = "";
 
+  if (!hiddenChatsLoaded) {
+    messages.textContent = "Memuat riwayat chat...";
+    return;
+  }
+
   // MEMUAT PESAN YANG DISEMBUNYIKAN AKUN INI
   const hiddenQuery = query(
     collection(db, "users", currentUser.uid, "hiddenMessages"),
@@ -1679,6 +1827,16 @@ function openRoom(roomId) {
       snapshot.forEach(function(item) {
         const data = item.data();
 
+        // Filter riwayat lama khusus akun ini
+        const statusChat = hiddenChats.get(roomId) || {};
+        const waktuDisembunyikan = statusChat.hiddenAt;
+        if (waktuDisembunyikan) {
+          const batasWaktu = waktuDisembunyikan.toMillis
+            ? waktuDisembunyikan.toMillis() : 0;
+          const waktuPesan = data.createdAt?.toMillis?.() || 0;
+          if (waktuPesan <= batasWaktu) return;
+        }
+
         // Tandai pesan dari lawan chat sebagai sudah dibaca
         tandaiPesanDibaca(roomId, item.id, data);
 
@@ -1707,6 +1865,19 @@ function openRoom(roomId) {
         });
 
         bubble.appendChild(tombolMenuPesan);
+
+        if (milikSaya && data.text && !data.mediaUrl) {
+          const tombolEdit = document.createElement("button");
+          tombolEdit.type = "button";
+          tombolEdit.className = "message-edit-button";
+          tombolEdit.textContent = "Edit";
+          tombolEdit.title = "Edit pesan";
+          tombolEdit.addEventListener("click", function(event) {
+            event.stopPropagation();
+            editMessage(roomId, item.id, data.text);
+          });
+          bubble.appendChild(tombolEdit);
+        }
 
         if (stickerEmojis.includes(data.text)) {
           bubble.classList.add("sticker-message");
@@ -1766,7 +1937,7 @@ function openRoom(roomId) {
         // JAM PESAN
         const waktuPesan = document.createElement("span");
         waktuPesan.className = "message-time";
-        waktuPesan.textContent = formatTime(data.createdAt);
+        waktuPesan.textContent = (data.editedAt ? "Diedit · " : "") + formatTime(data.createdAt);
         if (waktuPesan.textContent) {
           bubble.appendChild(waktuPesan);
         }
