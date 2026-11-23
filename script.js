@@ -1518,13 +1518,16 @@ function pilihPesanUntukDibalas(messageId, data) {
   selectedReply = {
     messageId: messageId,
     senderId: data.senderId,
-    text: data.text || ""
+    text: data.text || (
+      data.mediaType === "image" ? "Foto" :
+      data.mediaType === "video" ? "Video" : ""
+    )
   };
 
   replyPreviewName.textContent =
     data.senderId === currentUser.uid ? "Membalas pesan Anda" : "Membalas pesan";
 
-  replyPreviewText.textContent = data.text || "(pesan kosong)";
+  replyPreviewText.textContent = selectedReply.text || "(pesan kosong)";
   replyPreview.hidden = false;
   chatInput.focus();
 }
@@ -1730,7 +1733,34 @@ function openRoom(roomId) {
 
         const isiPesan = document.createElement("div");
         isiPesan.className = "message-text";
-        isiPesan.textContent = data.text || "";
+
+        if (data.mediaUrl && data.mediaType === "image") {
+          const foto = document.createElement("img");
+          foto.className = "message-media-image";
+          foto.src = data.mediaUrl;
+          foto.alt = data.mediaName || "Foto";
+          foto.loading = "lazy";
+          foto.decoding = "async";
+          isiPesan.appendChild(foto);
+        }
+
+        if (data.mediaUrl && data.mediaType === "video") {
+          const video = document.createElement("video");
+          video.className = "message-media-video";
+          video.src = data.mediaUrl;
+          video.controls = true;
+          video.playsInline = true;
+          video.preload = "metadata";
+          isiPesan.appendChild(video);
+        }
+
+        if (data.text) {
+          const caption = document.createElement("div");
+          caption.className = data.mediaUrl ? "media-caption" : "";
+          caption.textContent = data.text;
+          isiPesan.appendChild(caption);
+        }
+
         bubble.appendChild(isiPesan);
 
         // JAM PESAN
@@ -2038,24 +2068,175 @@ document.querySelectorAll(".conversation-tabs button")
     });
   });
 
-// FOTO DAN VIDEO BELUM TERHUBUNG KE SERVER
-function handleMedia(inputId, type) {
-  document.getElementById(inputId)
-    .addEventListener("change", function() {
-      const file = this.files[0];
+// UPLOAD FOTO DAN VIDEO MELALUI IMAGEKIT
+const IMAGEKIT_PUBLIC_KEY = "public_L8LVQdiZUxSw81uEq1EBvF0WuFk=";
+const IMAGEKIT_AUTH_URL =
+  "https://datechat-media.sopojaro23.workers.dev/auth";
+const IMAGEKIT_UPLOAD_URL =
+  "https://upload.imagekit.io/api/v1/files/upload";
 
-      if (!file) return;
+const BATAS_FOTO = 25 * 1024 * 1024;
+const BATAS_VIDEO = 100 * 1024 * 1024;
 
-      alert(
-        "File " + type + " dipilih: " + file.name +
-        "\nPengiriman media online belum diaktifkan."
-      );
+async function uploadMediaDateChat(file, mediaType) {
+  const user = currentUser;
+  const roomId = currentRoomId;
+  const balasanAktif = selectedReply;
 
-      this.value = "";
-    });
+  if (!user || !roomId) {
+    throw new Error("Buka percakapan terlebih dahulu.");
+  }
+
+  const idToken = await user.getIdToken();
+
+  const authResponse = await fetch(IMAGEKIT_AUTH_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + idToken,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({})
+  });
+
+  const authData = await authResponse.json();
+
+  if (!authResponse.ok) {
+    throw new Error(authData.error || "Gagal meminta izin upload.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append(
+    "fileName",
+    user.uid + "_" + Date.now() + "_" + file.name
+  );
+  formData.append("publicKey", IMAGEKIT_PUBLIC_KEY);
+  formData.append("token", authData.token);
+  formData.append("expire", String(authData.expire));
+  formData.append("signature", authData.signature);
+  formData.append("folder", "/Home/DateChat/chat-media");
+  formData.append("useUniqueFileName", "true");
+
+  const uploadResponse = await fetch(IMAGEKIT_UPLOAD_URL, {
+    method: "POST",
+    body: formData
+  });
+
+  const uploadData = await uploadResponse.json();
+
+  if (!uploadResponse.ok || !uploadData.url) {
+    throw new Error(
+      uploadData.message || uploadData.help || "Upload ke ImageKit gagal."
+    );
+  }
+
+  if (!currentUser || currentUser.uid !== user.uid) {
+    throw new Error("Sesi login berubah. Silakan coba kembali.");
+  }
+
+  const pesanMedia = {
+    senderId: user.uid,
+    text: "",
+    mediaType: mediaType,
+    mediaUrl: uploadData.url,
+    mediaFileId: uploadData.fileId || "",
+    mediaName: file.name,
+    mediaMimeType: file.type || "",
+    mediaSize: file.size,
+    createdAt: serverTimestamp(),
+    deliveredTo: [],
+    readBy: []
+  };
+
+  if (balasanAktif) {
+    pesanMedia.replyTo = {
+      messageId: balasanAktif.messageId,
+      senderId: balasanAktif.senderId,
+      text: balasanAktif.text
+    };
+  }
+
+  await addDoc(
+    collection(db, "rooms", roomId, "messages"),
+    pesanMedia
+  );
+
+  if (selectedReply === balasanAktif && balasanAktif) {
+    batalBalasPesan();
+  }
 }
 
-handleMedia("cameraPhotoInput", "foto dari kamera");
-handleMedia("cameraVideoInput", "video dari kamera");
-handleMedia("photoInput", "foto dari galeri");
-handleMedia("videoInput", "video dari galeri");
+function handleMedia(inputId, mediaType, sumber) {
+  const input = document.getElementById(inputId);
+
+  input.addEventListener("change", async function() {
+    const file = this.files[0];
+
+    if (!file) return;
+
+    const namaFile = file.name.toLowerCase();
+    const ekstensiFoto = /\.(jpg|jpeg|png|webp|heic|heif)$/i;
+    const ekstensiVideo = /\.(mp4|webm|mov)$/i;
+
+    const isFoto =
+      file.type.startsWith("image/") || ekstensiFoto.test(namaFile);
+    const isVideo =
+      file.type.startsWith("video/") || ekstensiVideo.test(namaFile);
+
+    if (mediaType === "image" && (!isFoto || !ekstensiFoto.test(namaFile))) {
+      alert("Format foto harus JPG, PNG, WebP, HEIC, atau HEIF.");
+      this.value = "";
+      return;
+    }
+
+    if (mediaType === "video" && (!isVideo || !ekstensiVideo.test(namaFile))) {
+      alert("Format video harus MP4, WebM, atau MOV.");
+      this.value = "";
+      return;
+    }
+
+    const batas = mediaType === "image" ? BATAS_FOTO : BATAS_VIDEO;
+
+    if (file.size > batas) {
+      alert(
+        "Ukuran " + (mediaType === "image" ? "foto" : "video") +
+        " maksimal " + (mediaType === "image" ? "25 MB" : "100 MB") + "."
+      );
+      this.value = "";
+      return;
+    }
+
+    if (!currentUser || !currentRoomId) {
+      alert("Buka percakapan terlebih dahulu.");
+      this.value = "";
+      return;
+    }
+
+    this.disabled = true;
+    mediaPanel.hidden = true;
+
+    const statusUpload = document.createElement("div");
+    statusUpload.className = "system-message";
+    statusUpload.textContent =
+      "Sedang mengunggah " +
+      (mediaType === "image" ? "foto" : "video") + "...";
+    messages.appendChild(statusUpload);
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      await uploadMediaDateChat(file, mediaType);
+    } catch (error) {
+      console.error("Upload media gagal:", error);
+      alert("Media gagal dikirim: " + error.message);
+    } finally {
+      statusUpload.remove();
+      this.disabled = false;
+      this.value = "";
+    }
+  });
+}
+
+handleMedia("cameraPhotoInput", "image", "kamera");
+handleMedia("cameraVideoInput", "video", "kamera");
+handleMedia("photoInput", "image", "galeri");
+handleMedia("videoInput", "video", "galeri");

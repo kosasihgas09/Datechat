@@ -1196,3 +1196,24 @@ button {
 .photo-viewer-placeholder[hidden] {
   display: none;
 }
+
+/* MEDIA FOTO DAN VIDEO DALAM CHAT */
+.message-media-image,
+.message-media-video {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.message-media-video {
+  background: #000;
+}
+
+.media-caption {
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
