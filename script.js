@@ -64,8 +64,10 @@ const profilePhotoInput = document.getElementById("profilePhotoInput");
 const profileCameraInput = document.getElementById("profileCameraInput");
 const profileStatus = document.getElementById("profileStatus");
 const saveProfileButton = document.getElementById("saveProfileButton");
+const removeProfilePhotoButton = document.getElementById("removeProfilePhoto");
 
 let selectedReply = null;
+let removeProfilePhotoRequested = false;
 
 const emojiList = [
   "😀", "😂", "🥰", "😍", "😘", "😭",
@@ -346,6 +348,32 @@ takeProfilePhotoButton.addEventListener("click", function() {
   profileCameraInput.click();
 });
 
+removeProfilePhotoButton.addEventListener("click", function() {
+  if (!currentProfile.photoURL && !selectedProfileFile) {
+    profileStatus.textContent = "Belum ada foto profil untuk dihapus.";
+    return;
+  }
+
+  if (!confirm("Hapus foto profil kamu? Perubahan berlaku setelah menekan Simpan Profil.")) {
+    return;
+  }
+
+  selectedProfileFile = null;
+  removeProfilePhotoRequested = Boolean(currentProfile.photoURL);
+
+  profilePhotoInput.value = "";
+  profileCameraInput.value = "";
+
+  tampilkanAvatar(
+    profileAvatar,
+    removeProfilePhotoRequested ? "" : currentProfile.photoURL
+  );
+
+  profileStatus.textContent = removeProfilePhotoRequested
+    ? "Foto akan dihapus setelah kamu menekan Simpan Profil."
+    : "Pilihan foto baru dibatalkan.";
+});
+
 function prosesFotoProfil(file) {
   if (!file) return;
 
@@ -360,6 +388,7 @@ function prosesFotoProfil(file) {
   }
 
   selectedProfileFile = file;
+  removeProfilePhotoRequested = false;
   const previewURL = URL.createObjectURL(file);
   tampilkanAvatar(profileAvatar, previewURL);
   profileStatus.textContent = "Foto siap digunakan. Tekan Simpan Profil nanti.";
@@ -447,7 +476,9 @@ saveProfileButton.addEventListener("click", async function() {
   profileStatus.textContent = "Menyimpan profil...";
 
   try {
-    let photoURL = currentProfile.photoURL;
+    let photoURL = removeProfilePhotoRequested
+      ? ""
+      : currentProfile.photoURL;
 
     if (selectedProfileFile) {
       profileStatus.textContent = "Mengunggah foto...";
@@ -517,6 +548,7 @@ saveProfileButton.addEventListener("click", async function() {
     profileUsernameInput.value = currentProfile.username;
 
     selectedProfileFile = null;
+    removeProfilePhotoRequested = false;
     profilePhotoInput.value = "";
     profileCameraInput.value = "";
 
