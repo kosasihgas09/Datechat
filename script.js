@@ -122,6 +122,12 @@ let currentProfile = {
   photoURL: "",
   username: ""
 };
+
+let currentPartnerProfile = {
+  displayName: "",
+  photoURL: "",
+  username: ""
+};
 let selectedProfileFile = null;
 let stopPartnerProfile = null;
 let stopFriendRequests = null;
@@ -413,6 +419,29 @@ profileAvatar.addEventListener("click", function() {
 
 document.getElementById("partnerAvatar").addEventListener("click", function() {
   bukaTampilanAvatar(this, "Foto profil lawan chat");
+});
+
+const partnerProfilePanel = document.getElementById("partnerProfilePanel");
+const closePartnerProfileButton = document.getElementById("closePartnerProfile");
+const partnerProfileAvatar = document.getElementById("partnerProfileAvatar");
+const partnerProfileName = document.getElementById("partnerProfileName");
+const partnerProfileUsername = document.getElementById("partnerProfileUsername");
+
+document.getElementById("partnerName").addEventListener("click", function() {
+  partnerProfileName.textContent =
+    currentPartnerProfile.displayName || "Pengguna DateChat";
+
+  partnerProfileUsername.textContent =
+    currentPartnerProfile.username
+      ? "@" + currentPartnerProfile.username.replace(/^@/, "")
+      : "Username belum tersedia";
+
+  tampilkanAvatar(partnerProfileAvatar, currentPartnerProfile.photoURL);
+  partnerProfilePanel.hidden = false;
+});
+
+closePartnerProfileButton.addEventListener("click", function() {
+  partnerProfilePanel.hidden = true;
 });
 
 // MENU TIGA TITIK BERANDA
@@ -1327,22 +1356,6 @@ function renderConversations() {
     content.append(title, username, detail);
     button.append(content, time);
 
-    button.addEventListener("click", function() {
-      openRoom(room.id);
-    });
-
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "delete-chat-button";
-    deleteButton.textContent = "⋯";
-    deleteButton.title = "Hapus chat";
-
-    deleteButton.setAttribute("aria-label", "Menu chat");
-    deleteButton.addEventListener("click", function(event) {
-      event.stopPropagation();
-      menu.hidden = !menu.hidden;
-    });
-
     const menu = document.createElement("div");
     menu.className = "conversation-menu";
     menu.hidden = true;
@@ -1366,10 +1379,96 @@ function renderConversations() {
     });
 
     menu.append(bersihkanButton, hapusButton);
-    card.append(button, deleteButton, menu);
+
+    let timerTekanChat = null;
+    let tekanLamaChatAktif = false;
+
+    function tampilkanMenuChat() {
+      list.querySelectorAll(".conversation-menu").forEach(function(menuLain) {
+        menuLain.hidden = true;
+      });
+      menu.hidden = false;
+    }
+
+    button.addEventListener("pointerdown", function(event) {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      tekanLamaChatAktif = false;
+      clearTimeout(timerTekanChat);
+
+      timerTekanChat = setTimeout(function() {
+        tekanLamaChatAktif = true;
+        tampilkanMenuChat();
+      }, 500);
+    });
+
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function(jenisEvent) {
+      button.addEventListener(jenisEvent, function() {
+        clearTimeout(timerTekanChat);
+      });
+    });
+
+    button.addEventListener("contextmenu", function(event) {
+      event.preventDefault();
+      tekanLamaChatAktif = true;
+      tampilkanMenuChat();
+    });
+
+    button.addEventListener("click", function(event) {
+      if (button.dataset.tutupMenuSaja === "1") {
+        delete button.dataset.tutupMenuSaja;
+        event.preventDefault();
+        event.stopPropagation();
+        tekanLamaChatAktif = false;
+        return;
+      }
+
+      if (tekanLamaChatAktif) {
+        event.preventDefault();
+        event.stopPropagation();
+        tekanLamaChatAktif = false;
+        return;
+      }
+
+      openRoom(room.id);
+    });
+
+    card.append(button, menu);
     list.appendChild(card);
   });
 }
+
+// TUTUP MENU CHAT SAAT AREA DI LUAR DISENTUH
+document.addEventListener("pointerdown", function(event) {
+  const menuTerbuka = document.querySelector(
+    "#conversationList .conversation-menu:not([hidden])"
+  );
+
+  if (!menuTerbuka || menuTerbuka.contains(event.target)) return;
+
+  const kartuMenu = menuTerbuka.closest(".menu-card");
+  const kartuDituju = event.target.closest("#conversationList .menu-card");
+  const tombolChat = event.target.closest("#conversationList .conversation-open");
+
+  if (kartuMenu && kartuDituju === kartuMenu && tombolChat) {
+    tombolChat.dataset.tutupMenuSaja = "1";
+  }
+
+  menuTerbuka.hidden = true;
+}, true);
+
+// TUTUP MENU AKSI PESAN SAAT AREA DI LUAR PESAN DISENTUH
+document.addEventListener("pointerdown", function(event) {
+  const menuPesanTerbuka = document.querySelectorAll(
+    ".message-bubble.message-actions-visible"
+  );
+
+  menuPesanTerbuka.forEach(function(bubble) {
+    if (!bubble.contains(event.target)) {
+      bubble.classList.remove("message-actions-visible");
+    }
+  });
+}, true);
 
 // EDIT PESAN TEKS MILIK SENDIRI
 async function editMessage(roomId, messageId, teksLama) {
@@ -1866,6 +1965,7 @@ async function sembunyikanPesanUntukSaya(roomId, messageId) {
 
 // BUKA RUANG CHAT
 function openRoom(roomId) {
+  partnerProfilePanel.hidden = true;
   if (stopMessages) stopMessages();
   if (stopHiddenMessages) stopHiddenMessages();
   stopHiddenMessages = null;
@@ -1877,6 +1977,11 @@ function openRoom(roomId) {
   }
 
   currentRoomId = roomId;
+  currentPartnerProfile = {
+    displayName: "",
+    photoURL: "",
+    username: ""
+  };
   searchMessageMatches.delete(roomId);
   if (messageSearchInput) messageSearchInput.value = "";
   showScreen("chat");
@@ -1902,12 +2007,24 @@ function openRoom(roomId) {
       doc(db, "publicProfiles", partnerUid),
       function(snapshot) {
         if (!snapshot.exists()) {
+          currentPartnerProfile = {
+            displayName: "",
+            photoURL: "",
+            username: ""
+          };
           partnerNameElement.textContent = "Pengguna DateChat";
           tampilkanAvatar(partnerAvatarElement, "");
           return;
         }
 
         const dataProfilTeman = snapshot.data();
+
+        currentPartnerProfile = {
+          displayName: dataProfilTeman.displayName || "",
+          photoURL: dataProfilTeman.photoURL || "",
+          username: dataProfilTeman.username || ""
+        };
+
         partnerNameElement.textContent =
           dataProfilTeman.displayName || "Pengguna DateChat";
 
@@ -1918,6 +2035,11 @@ function openRoom(roomId) {
       },
       function(error) {
         console.error("Gagal memuat profil teman:", error);
+        currentPartnerProfile = {
+          displayName: "",
+          photoURL: "",
+          username: ""
+        };
         partnerNameElement.textContent = "Pengguna DateChat";
       }
     );
@@ -2422,6 +2544,7 @@ chatInput.addEventListener("input", function() {
 // KEMBALI KE DAFTAR CHAT
 document.getElementById("backHome")
   .addEventListener("click", function() {
+    partnerProfilePanel.hidden = true;
     if (stopMessages) stopMessages();
     if (stopHiddenMessages) stopHiddenMessages();
     if (stopPartnerProfile) stopPartnerProfile();
@@ -2438,6 +2561,7 @@ document.getElementById("backHome")
 // KELUAR
 async function logout() {
   try {
+    partnerProfilePanel.hidden = true;
     if (stopMessages) stopMessages();
     if (stopHiddenMessages) stopHiddenMessages();
     if (stopPartnerProfile) stopPartnerProfile();

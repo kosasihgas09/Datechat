@@ -234,7 +234,7 @@
       <div class="avatar" id="partnerAvatar">👤</div>
 
       <div class="chat-person">
-        <strong id="partnerName">Pasangan Chat</strong>
+        <button type="button" id="partnerName" class="partner-name-button">Pasangan Chat</button>
         <small>Ruang pribadi DateChat</small>
       </div>
 
@@ -308,6 +308,21 @@
     </form>
 
   </main>
+
+  <!-- PROFIL TEMAN -->
+  <section id="partnerProfilePanel" class="partner-profile-panel" hidden>
+    <div class="partner-profile-card">
+      <div class="profile-heading">
+        <h2>Profil Teman</h2>
+        <button type="button" id="closePartnerProfile"
+          aria-label="Kembali ke chat">✕</button>
+      </div>
+
+      <div class="partner-profile-avatar" id="partnerProfileAvatar">👤</div>
+      <h3 id="partnerProfileName">Nama Teman</h3>
+      <p id="partnerProfileUsername">@username</p>
+    </div>
+  </section>
 
   <script type="module" src="script.js"></script>
 </body>
