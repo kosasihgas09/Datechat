@@ -1276,3 +1276,339 @@ button {
 #conversationList .conversation-menu button:active {
   background: var(--border);
 }
+
+/* =================================
+   DATECHAT UI REFRESH
+================================= */
+
+/* HEADER BERANDA */
+.home-header {
+  position: relative;
+  padding: 17px 16px;
+  background: var(--panel);
+  box-shadow: 0 2px 12px rgba(0,0,0,.15);
+}
+
+.home-header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+}
+
+.header-actions {
+  gap: 8px;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--panel2);
+  border-radius: 13px;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.icon-button:active {
+  transform: scale(.92);
+}
+
+/* MENU TITIK TIGA */
+.home-menu-panel {
+  position: absolute;
+  top: calc(100% - 5px);
+  right: 58px;
+  z-index: 100;
+  width: 220px;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+
+.home-menu-panel[hidden] {
+  display: none !important;
+}
+
+.home-menu-panel button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.home-menu-panel button:active {
+  background: var(--panel2);
+}
+
+/* BADGE NOTIFIKASI */
+#menuNotificationBadge {
+  min-width: 19px;
+  padding: 3px 6px;
+  border-radius: 20px;
+  background: #ef4444;
+  color: white;
+  text-align: center;
+  font-size: 11px;
+}
+
+#menuNotificationBadge[hidden] {
+  display: none !important;
+}
+
+/* GELEMBUNG PESAN */
+.message-bubble {
+  max-width: 75%;
+  padding: 10px 12px;
+  border-radius: 13px;
+  line-height: 1.5;
+  box-shadow: 0 2px 4px rgba(0,0,0,.12);
+}
+
+.message-bubble.sent {
+  border-top-right-radius: 4px;
+}
+
+.message-bubble.received {
+  border-top-left-radius: 4px;
+}
+
+/* AREA MENGETIK */
+.chat-input-area {
+  gap: 9px;
+  padding: 10px 12px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+}
+
+.chat-compose-row {
+  gap: 7px;
+}
+
+.chat-compose-row textarea {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  font-size: 14px;
+}
+
+.chat-compose-row .picker-button {
+  border-radius: 50%;
+  transition: .2s;
+}
+
+.chat-compose-row .picker-button:active,
+.send-button:active {
+  transform: scale(.9);
+}
+
+.send-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0,0,0,.2);
+}
+
+/* PANEL MEDIA */
+.media-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  padding: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.media-panel button,
+.media-panel label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 65px;
+  padding: 10px 5px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* TAMPILAN HP */
+@media (max-width: 380px) {
+  .message-bubble {
+    max-width: 82%;
+  }
+
+  .home-menu-panel {
+    right: 55px;
+    width: 205px;
+  }
+
+  .chat-input-area {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+}
+
+/* PROFIL DAN NOTIFIKASI SEBAGAI HALAMAN PENUH */
+#profilePanel,
+#notificationsPanel {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: max(20px, env(safe-area-inset-top)) 14px
+           max(20px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: var(--bg);
+  border: none;
+}
+
+#profilePanel[hidden],
+#notificationsPanel[hidden] {
+  display: none !important;
+}
+
+#profilePanel .profile-card,
+#notificationsPanel .profile-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* HEADER HALAMAN PROFIL DAN NOTIFIKASI */
+#profilePanel .profile-heading,
+#notificationsPanel .profile-heading {
+  position: sticky;
+  top: -20px;
+  z-index: 2;
+  padding: 12px 0;
+  background: var(--panel);
+}
+
+/* SEMBUNYIKAN PENCARIAN PESAN */
+.message-search {
+  display: none !important;
+}
+
+/* TOMBOL KAMERA LEBIH SEDERHANA */
+.chat-compose-row .camera-toggle {
+  width: 36px;
+  height: 38px;
+  font-size: 18px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel2);
+  color: var(--muted);
+}
+
+/* PANEL MEDIA TIDAK TERLALU MENCOLOK */
+.media-panel button {
+  cursor: pointer;
+}
+
+/* MENU AKSI PESAN SAAT DITEKAN LAMA */
+.message-bubble {
+  position: relative;
+}
+
+.message-bubble .message-delete-button,
+.message-bubble .message-edit-button {
+  position: absolute !important;
+  top: -38px;
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 9px;
+  background: #172033;
+  color: white;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  z-index: 10;
+}
+
+.message-bubble .message-delete-button {
+  right: 0;
+  width: 34px;
+}
+
+.message-bubble .message-edit-button {
+  right: 39px;
+}
+
+.message-bubble.message-actions-visible .message-delete-button,
+.message-bubble.message-actions-visible .message-edit-button {
+  display: flex !important;
+}
+
+/* IKON HAPUS FOTO PROFIL MINIMALIS */
+.profile-avatar-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 20px;
+}
+
+.profile-avatar-wrap .profile-avatar {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+#removeProfilePhoto {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+  background: rgba(25, 32, 45, 0.76);
+  color: rgba(255, 255, 255, 0.88);
+  opacity: 0.82;
+  cursor: pointer;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+#removeProfilePhoto svg {
+  width: 15px;
+  height: 15px;
+}
+
+#removeProfilePhoto:active {
+  opacity: 1;
+  background: rgba(25, 32, 45, 0.95);
+}
+
+#removeProfilePhoto:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

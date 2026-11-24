@@ -48,16 +48,17 @@
       </div>
 
       <div class="header-actions">
-        <button type="button" id="openNotifications"
-          class="icon-button notification-button"
-          aria-label="Notifikasi" aria-expanded="false">
-          🔔<span id="notificationBadge" hidden>0</span>
-        </button>
-        <button type="button" id="openProfile"
-          class="icon-button" aria-label="Profil saya">👤</button>
         <button type="button" id="openPrivateChat"
           class="icon-button" aria-label="Chat baru">＋</button>
-
+        <button type="button" id="homeMenuToggle"
+          class="icon-button" aria-label="Menu lainnya" aria-expanded="false">⋮</button>
+        <div id="homeMenuPanel" class="home-menu-panel" hidden>
+          <button type="button" id="menuViewProfile">👤 Lihat profil</button>
+          <button type="button" id="menuViewNotifications">
+            🔔 Notifikasi pertemanan
+            <span id="menuNotificationBadge" hidden>0</span>
+          </button>
+        </div>
         <button type="button" id="logoutHome"
           class="icon-button" aria-label="Keluar">↗</button>
       </div>
@@ -72,7 +73,17 @@
             aria-label="Tutup profil">✕</button>
         </div>
 
-        <div class="profile-avatar" id="profileAvatar">👤</div>
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar" id="profileAvatar">👤</div>
+          <button type="button" id="removeProfilePhoto"
+            aria-label="Hapus foto profil" title="Hapus foto profil">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M10 11v6m4-6v6M5 7l1 14h12l1-14M9 7V4h6v3"
+                fill="none" stroke="currentColor" stroke-width="1.6"
+                stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
 
         <label for="profileNameInput">Nama tampilan</label>
         <input id="profileNameInput" type="text"
@@ -95,9 +106,7 @@
           </button>
         </div>
 
-        <button type="button" id="removeProfilePhoto">
-          🗑️ Hapus Foto Profil
-        </button>
+
 
         <input type="file" id="profilePhotoInput"
           accept="image/*" hidden>
@@ -252,10 +261,11 @@
     <div id="pickerPanel" class="picker-panel" hidden></div>
 
     <div id="mediaPanel" class="media-panel" hidden>
-      <label for="cameraPhotoInput">📸 Ambil Foto</label>
-      <label for="cameraVideoInput">🎬 Rekam Video</label>
-      <label for="photoInput">🖼️ Galeri Foto</label>
-      <label for="videoInput">🎥 Galeri Video</label>
+      <button type="button" id="attachCamera">📷 Kamera</button>
+      <button type="button" id="attachVideo">🎥 Video</button>
+      <button type="button" id="attachGallery">🖼️ Galeri Foto</button>
+      <button type="button" id="attachGalleryVideo">🎬 Galeri Video</button>
+      <button type="button" id="attachLink">🔗 Tautan</button>
     </div>
 
     <input type="file" id="cameraPhotoInput"
@@ -283,6 +293,8 @@
         <textarea id="chatInput" placeholder="Tulis pesan..."
           rows="1" maxlength="2000"></textarea>
 
+        <button type="button" id="cameraToggle"
+          class="picker-button camera-toggle" aria-label="Ambil foto">📷</button>
         <button type="submit" class="send-button"
           aria-label="Kirim pesan">➤</button>
       </div>
