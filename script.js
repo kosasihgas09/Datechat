@@ -95,6 +95,10 @@ const message = document.getElementById("message");
 
 const email = document.getElementById("email");
 const password = document.getElementById("password");
+const usernameLoginInput = document.getElementById("usernameLogin");
+const switchLoginModeButton = document.getElementById("switchLoginMode");
+
+let loginMode = "username";
 const searchInput = document.getElementById("searchConversation");
 
 let currentUser = null;
@@ -271,26 +275,124 @@ function formatTime(timestamp) {
   });
 }
 
+// MODE LOGIN USERNAME / EMAIL
+function setLoginMode(mode) {
+  loginMode = mode;
+  const gunakanEmail = mode === "email";
+
+  usernameLoginInput.hidden = gunakanEmail;
+  usernameLoginInput.required = !gunakanEmail;
+  email.hidden = !gunakanEmail;
+  email.required = gunakanEmail;
+
+  switchLoginModeButton.textContent = gunakanEmail
+    ? "Masuk dengan Username"
+    : "Masuk dengan Email";
+
+  message.textContent = "";
+}
+
+switchLoginModeButton.addEventListener("click", function() {
+  setLoginMode(loginMode === "username" ? "email" : "username");
+});
+
+const DATECHAT_AUTH_URL =
+  "https://datechat-auth.sopojaro23.workers.dev";
+
+// SINKRONISASI USERNAME KE CLOUDFLARE KV
+async function sinkronkanUsernameKeWorker(user, username) {
+  if (!user || !username) return;
+
+  const idToken = await user.getIdToken();
+
+  const response = await fetch(DATECHAT_AUTH_URL + "/sync", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ idToken })
+  });
+
+  const hasil = await response.json();
+
+  if (!response.ok || !hasil.ok) {
+    throw new Error(
+      hasil.error || "Sinkronisasi username gagal."
+    );
+  }
+
+  return hasil;
+}
+
 // LOGIN
 loginForm.addEventListener("submit", async function(event) {
   event.preventDefault();
+
   message.textContent = "Sedang masuk...";
 
   try {
-    await signInWithEmailAndPassword(
-      auth,
-      email.value.trim(),
-      password.value
-    );
+    if (loginMode === "username") {
+      const username = usernameLoginInput.value
+        .trim()
+        .toLowerCase();
+
+      if (!/^[a-z0-9_]{4,20}$/.test(username)) {
+        throw new Error("Username harus 4-20 karakter.");
+      }
+
+      const response = await fetch(DATECHAT_AUTH_URL + "/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: username,
+          password: password.value
+        })
+      });
+
+      const hasil = await response.json();
+
+      if (!response.ok || !hasil.email) {
+        throw new Error(
+          hasil.error || "Username atau password salah."
+        );
+      }
+
+      await signInWithEmailAndPassword(
+        auth,
+        hasil.email,
+        password.value
+      );
+
+    } else {
+      await signInWithEmailAndPassword(
+        auth,
+        email.value.trim(),
+        password.value
+      );
+    }
 
     message.textContent = "";
+
   } catch (error) {
-    message.textContent = "Login gagal: " + error.message;
+    console.error("Login gagal:", error);
+    message.textContent = error.message === "Failed to fetch"
+      ? "Layanan login tidak dapat dihubungi. Periksa koneksi internet."
+      : "Login gagal: " + error.message;
   }
 });
 
 // DAFTAR AKUN
 registerButton.addEventListener("click", async function() {
+  if (loginMode !== "email") {
+    setLoginMode("email");
+    message.textContent =
+      "Masukkan email dan password untuk membuat akun.";
+    email.focus();
+    return;
+  }
+
   const alamatEmail = email.value.trim();
   const kataSandi = password.value;
 
@@ -305,14 +407,12 @@ registerButton.addEventListener("click", async function() {
   }
 
   message.textContent = "Membuat akun...";
-
   try {
     await createUserWithEmailAndPassword(
       auth,
       alamatEmail,
       kataSandi
     );
-
     message.textContent = "";
   } catch (error) {
     message.textContent = "Pendaftaran gagal: " + error.message;
@@ -686,9 +786,29 @@ saveProfileButton.addEventListener("click", async function() {
 
     tampilkanAvatar(profileAvatar, photoURL);
 
-    profileStatus.textContent = currentProfile.username
-      ? "Profil berhasil disimpan. Username: @" + currentProfile.username
-      : "Profil berhasil disimpan. Silakan pilih username kamu.";
+    if (currentProfile.username) {
+      try {
+        profileStatus.textContent = "Profil tersimpan. Menyinkronkan username...";
+
+        await sinkronkanUsernameKeWorker(
+          currentUser,
+          currentProfile.username
+        );
+
+        profileStatus.textContent =
+          "Profil berhasil disimpan. Username: @" +
+          currentProfile.username;
+
+      } catch (syncError) {
+        console.warn("Sinkronisasi username gagal:", syncError);
+
+        profileStatus.textContent =
+          "Profil tersimpan, tetapi sinkronisasi login username gagal. Coba simpan profil lagi.";
+      }
+    } else {
+      profileStatus.textContent =
+        "Profil berhasil disimpan. Silakan pilih username kamu.";
+    }
 
   } catch (error) {
     console.error(error);

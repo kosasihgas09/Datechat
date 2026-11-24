@@ -19,20 +19,27 @@
     <p>Private messaging for everyone.</p>
 
     <form id="loginForm">
+      <input id="usernameLogin" type="text"
+        placeholder="Username" autocomplete="username" required>
+
       <input id="email" type="email"
-        placeholder="Alamat email" required>
+        placeholder="Alamat email" autocomplete="email" hidden>
 
       <input id="password" type="password"
-        placeholder="Password (minimal 6 karakter)"
-        minlength="6" required>
+        placeholder="Password" minlength="6"
+        autocomplete="current-password" required>
 
-      <button type="submit">Masuk ke DateChat</button>
+      <button type="submit" id="loginSubmitButton">MASUK</button>
+
+      <button type="button" id="switchLoginMode" class="login-text-button">
+        Masuk dengan Email
+      </button>
 
       <button type="button" id="registerButton">
         Buat Akun Baru
       </button>
 
-      <p id="message"></p>
+      <p id="message" role="status" aria-live="polite"></p>
     </form>
 
     <small>PRIVATE • SECURE • CONNECTED</small>
