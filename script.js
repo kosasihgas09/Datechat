@@ -1976,6 +1976,22 @@ function openRoom(roomId) {
     stopPartnerProfile = null;
   }
 
+  const stateSaatIni = history.state || {};
+
+  if (stateSaatIni.dateChatRoom) {
+    history.replaceState(
+      { ...stateSaatIni, dateChatRoom: roomId },
+      "",
+      location.href
+    );
+  } else {
+    history.pushState(
+      { ...stateSaatIni, dateChatRoom: roomId },
+      "",
+      location.href
+    );
+  }
+
   currentRoomId = roomId;
   currentPartnerProfile = {
     displayName: "",
@@ -2542,21 +2558,36 @@ chatInput.addEventListener("input", function() {
 });
 
 // KEMBALI KE DAFTAR CHAT
+function kembaliKeDaftarChat() {
+  partnerProfilePanel.hidden = true;
+
+  if (stopMessages) stopMessages();
+  if (stopHiddenMessages) stopHiddenMessages();
+  if (stopPartnerProfile) stopPartnerProfile();
+
+  stopMessages = null;
+  stopHiddenMessages = null;
+  hiddenMessageIds.clear();
+  stopPartnerProfile = null;
+  currentRoomId = null;
+
+  showScreen("home");
+}
+
 document.getElementById("backHome")
   .addEventListener("click", function() {
-    partnerProfilePanel.hidden = true;
-    if (stopMessages) stopMessages();
-    if (stopHiddenMessages) stopHiddenMessages();
-    if (stopPartnerProfile) stopPartnerProfile();
-
-    stopMessages = null;
-    stopHiddenMessages = null;
-    hiddenMessageIds.clear();
-    stopPartnerProfile = null;
-    currentRoomId = null;
-
-    showScreen("home");
+    if (history.state && history.state.dateChatRoom) {
+      history.back();
+    } else {
+      kembaliKeDaftarChat();
+    }
   });
+
+window.addEventListener("popstate", function() {
+  if (currentRoomId) {
+    kembaliKeDaftarChat();
+  }
+});
 
 // KELUAR
 async function logout() {
