@@ -2585,3 +2585,92 @@ button {
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+/* AVATAR DAN BADGE UNREAD DAFTAR CHAT */
+#homeScreen #conversationList .menu-card::before {
+  display: none !important;
+  content: none !important;
+}
+
+#homeScreen #conversationList .conversation-open {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+#homeScreen #conversationList .conversation-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 49px;
+  width: 49px;
+  height: 49px;
+  overflow: hidden;
+  border: 1px solid rgba(98,162,255,.3);
+  border-radius: 50%;
+  background: linear-gradient(145deg,#244b80,#142b4d);
+  color: #b8d6ff;
+  font-size: 23px;
+}
+
+#homeScreen #conversationList .conversation-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+#homeScreen #conversationList .conversation-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  gap: 2px;
+}
+
+#homeScreen #conversationList .conversation-content small {
+  margin-top: 3px;
+}
+
+#homeScreen #conversationList .conversation-meta {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 7px;
+  min-width: 42px;
+}
+
+#homeScreen #conversationList .conversation-time {
+  color: var(--dc-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+#homeScreen #conversationList .conversation-unread-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 20px;
+  background: #2585ff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+#homeScreen #conversationList .conversation-unread-badge[hidden] {
+  display: none !important;
+}

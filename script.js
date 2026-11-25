@@ -130,6 +130,7 @@ let partnerProfiles = new Map();
 let partnerProfileUnsubs = new Map();
 let latestUnsubs = new Map();
 let deliveryUnsubs = new Map();
+let unreadCounts = new Map();
 
 // DATA PROFIL
 let currentProfile = {
@@ -284,6 +285,45 @@ function formatTime(timestamp) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function formatConversationTime(timestamp) {
+  if (!timestamp || !timestamp.toDate) return "";
+
+  const tanggalPesan = timestamp.toDate();
+  const sekarang = new Date();
+
+  const hariIni = new Date(
+    sekarang.getFullYear(),
+    sekarang.getMonth(),
+    sekarang.getDate()
+  );
+
+  const tanggalKemarin = new Date(hariIni);
+  tanggalKemarin.setDate(tanggalKemarin.getDate() - 1);
+
+  const tanggalPesanHari = new Date(
+    tanggalPesan.getFullYear(),
+    tanggalPesan.getMonth(),
+    tanggalPesan.getDate()
+  );
+
+  if (tanggalPesanHari.getTime() === hariIni.getTime()) {
+    return tanggalPesan.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+
+  if (tanggalPesanHari.getTime() === tanggalKemarin.getTime()) {
+    return "Kemarin";
+  }
+
+  const hari = String(tanggalPesan.getDate()).padStart(2, "0");
+  const bulan = String(tanggalPesan.getMonth() + 1).padStart(2, "0");
+  const tahun = String(tanggalPesan.getFullYear()).slice(-2);
+
+  return hari + "." + bulan + "." + tahun;
 }
 
 // MODE LOGIN USERNAME / EMAIL
@@ -1512,13 +1552,26 @@ function updateLatestListeners() {
       const stopDelivery = onSnapshot(
         pesanMasukQuery,
         function(snapshot) {
+          let jumlahBelumDibaca = 0;
+
           snapshot.forEach(function(item) {
-            tandaiPesanDiterima(
-              room.id,
-              item.id,
-              item.data()
-            );
+            const data = item.data();
+
+            tandaiPesanDiterima(room.id, item.id, data);
+
+            const sudahDibaca = Array.isArray(data.readBy)
+              && data.readBy.includes(currentUser.uid);
+
+            if (
+              data.senderId !== currentUser.uid &&
+              !sudahDibaca
+            ) {
+              jumlahBelumDibaca++;
+            }
           });
+
+          unreadCounts.set(room.id, jumlahBelumDibaca);
+          renderConversations();
         },
         function(error) {
           console.error("Gagal memantau pesan diterima:", error);
@@ -1625,11 +1678,16 @@ function renderConversations() {
     button.type = "button";
     button.className = "conversation-open";
 
-    const content = document.createElement("span");
-    content.style.flex = "1";
-    content.style.minWidth = "0";
+    const avatar = document.createElement("div");
+      avatar.className = "conversation-avatar";
 
-    const profilTeman = partnerProfiles.get(room.id) || {};
+      const profilTeman = partnerProfiles.get(room.id) || {};
+      tampilkanAvatar(avatar, profilTeman.photoURL);
+
+      const content = document.createElement("span");
+      content.className = "conversation-content";
+      content.style.flex = "1";
+      content.style.minWidth = "0";
 
     const title = document.createElement("strong");
     title.textContent = profilTeman.displayName ||
@@ -1650,13 +1708,26 @@ function renderConversations() {
         ? lastMessage.text || "Pesan"
         : "Belum ada pesan";
 
-    const time = document.createElement("small");
-    time.textContent = lastMessage
-      ? formatTime(lastMessage.createdAt)
-      : "Baru";
+    const meta = document.createElement("span");
+      meta.className = "conversation-meta";
 
-    content.append(title, username, detail);
-    button.append(content, time);
+      const time = document.createElement("small");
+      time.className = "conversation-time";
+      time.textContent = lastMessage
+        ? formatConversationTime(lastMessage.createdAt)
+        : "Baru";
+
+      const badge = document.createElement("span");
+      badge.className = "conversation-unread-badge";
+      const jumlahBelumDibaca = unreadCounts.get(room.id) || 0;
+      badge.textContent = jumlahBelumDibaca > 99
+        ? "99+"
+        : String(jumlahBelumDibaca);
+      badge.hidden = jumlahBelumDibaca === 0;
+
+      content.append(title, username, detail);
+      meta.append(time, badge);
+      button.append(avatar, content, meta);
 
     const menu = document.createElement("div");
     menu.className = "conversation-menu";
