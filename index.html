@@ -71,8 +71,15 @@
         tampilkan("SCRIPT UTAMA: BERHASIL dievaluasi.");
       })
       .catch(function (error) {
-        tampilkan("SCRIPT UTAMA: GAGAL dievaluasi.\\n" +
-          (error.stack || error.message || String(error)));
+        tampilkan(
+          "SCRIPT UTAMA: GAGAL dievaluasi.\\n" +
+          "Nama: " + error.name + "\\n" +
+          "Pesan: " + error.message + "\\n" +
+          "File: " + (error.fileName || "tidak tersedia") + "\\n" +
+          "Baris: " + (error.lineNumber || "tidak tersedia") + "\\n" +
+          "Kolom: " + (error.columnNumber || "tidak tersedia") + "\\n" +
+          "Stack: " + (error.stack || "tidak tersedia")
+        );
       });
   });
 
