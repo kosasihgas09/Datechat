@@ -1978,7 +1978,8 @@ closeNotificationsButton.addEventListener("click", function() {
 });
 
 // MENU CHAT BARU
-const newChatPanel = document.getElementById("newChatPanel");\n
+const newChatPanel = document.getElementById("newChatPanel");
+
 const friendsPanel = document.getElementById("friendsPanel");
 
 function bukaBagianBeranda(bagian) {
