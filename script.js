@@ -738,7 +738,7 @@ profileCameraInput.addEventListener("change", function() {
 // UNGGAH FOTO KE CLOUDINARY
 async function unggahFotoProfil(file) {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", fileUpload);
   formData.append("upload_preset", "datechat_profiles");
 
   const response = await fetch(
@@ -3076,10 +3076,68 @@ const IMAGEKIT_UPLOAD_URL =
 const BATAS_FOTO = 25 * 1024 * 1024;
 const BATAS_VIDEO = 100 * 1024 * 1024;
 
+async function siapkanFotoUntukUpload(file) {
+  const MAX_PIXEL_FOTO = 20_000_000;
+
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Format foto tidak dapat diproses browser.");
+  }
+
+  let gambar;
+
+  try {
+    gambar = await createImageBitmap(file);
+  } catch (error) {
+    throw new Error(
+      "Foto tidak dapat dibaca browser. Coba gunakan JPG atau PNG."
+    );
+  }
+
+  const totalPixel = gambar.width * gambar.height;
+
+  if (totalPixel <= MAX_PIXEL_FOTO) {
+    gambar.close();
+    return file;
+  }
+
+  const skala = Math.sqrt(MAX_PIXEL_FOTO / totalPixel);
+  const lebar = Math.floor(gambar.width * skala);
+  const tinggi = Math.floor(gambar.height * skala);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = lebar;
+  canvas.height = tinggi;
+
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, lebar, tinggi);
+  ctx.drawImage(gambar, 0, 0, lebar, tinggi);
+  gambar.close();
+
+  const blob = await new Promise((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", 0.90);
+  });
+
+  if (!blob) {
+    throw new Error("Gagal memperkecil resolusi foto.");
+  }
+
+  const namaBaru = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+
+  return new File([blob], namaBaru, {
+    type: "image/jpeg",
+    lastModified: Date.now()
+  });
+}
+
 async function uploadMediaDateChat(file, mediaType) {
   const user = currentUser;
   const roomId = currentRoomId;
   const balasanAktif = selectedReply;
+  const fileUpload =
+    mediaType === "image"
+      ? await siapkanFotoUntukUpload(file)
+      : file;
 
   if (!user || !roomId) {
     throw new Error("Buka percakapan terlebih dahulu.");
@@ -3106,7 +3164,7 @@ async function uploadMediaDateChat(file, mediaType) {
   formData.append("file", file);
   formData.append(
     "fileName",
-    user.uid + "_" + Date.now() + "_" + file.name
+    user.uid + "_" + Date.now() + "_" + fileUpload.name
   );
   formData.append("publicKey", IMAGEKIT_PUBLIC_KEY);
   formData.append("token", authData.token);
@@ -3138,9 +3196,9 @@ async function uploadMediaDateChat(file, mediaType) {
     mediaType: mediaType,
     mediaUrl: uploadData.url,
     mediaFileId: uploadData.fileId || "",
-    mediaName: file.name,
-    mediaMimeType: file.type || "",
-    mediaSize: file.size,
+    mediaName: fileUpload.name,
+    mediaMimeType: fileUpload.type || "",
+    mediaSize: fileUpload.size,
     createdAt: serverTimestamp(),
     deliveredTo: [],
     readBy: []
