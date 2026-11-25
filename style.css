@@ -1500,7 +1500,8 @@ button {
 
 /* PROFIL DAN NOTIFIKASI SEBAGAI HALAMAN PENUH */
 #profilePanel,
-#notificationsPanel {
+#notificationsPanel,
+#settingsPanel {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -1519,12 +1520,14 @@ button {
 }
 
 #profilePanel[hidden],
-#notificationsPanel[hidden] {
+#notificationsPanel[hidden],
+#settingsPanel[hidden] {
   display: none !important;
 }
 
 #profilePanel .profile-card,
-#notificationsPanel .profile-card {
+#notificationsPanel .profile-card,
+#settingsPanel .profile-card {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -1533,7 +1536,8 @@ button {
 
 /* HEADER HALAMAN PROFIL DAN NOTIFIKASI */
 #profilePanel .profile-heading,
-#notificationsPanel .profile-heading {
+#notificationsPanel .profile-heading,
+#settingsPanel .profile-heading {
   position: sticky;
   top: -20px;
   z-index: 2;

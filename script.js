@@ -54,6 +54,9 @@ const cancelReply = document.getElementById("cancelReply");
 // ELEMEN PROFIL
 const openProfileButton = document.getElementById("openProfile");
 const profilePanel = document.getElementById("profilePanel");
+const settingsPanel = document.getElementById("settingsPanel");
+const menuOpenSettings = document.getElementById("menuOpenSettings");
+const closeSettingsButton = document.getElementById("closeSettings");
 const closeProfileButton = document.getElementById("closeProfile");
 const profileAvatar = document.getElementById("profileAvatar");
 const profileNameInput = document.getElementById("profileNameInput");
@@ -565,6 +568,16 @@ menuViewNotifications.addEventListener("click", function() {
   homeMenuPanel.hidden = true;
   homeMenuToggle.setAttribute("aria-expanded", "false");
   notificationsPanel.hidden = false;
+});
+
+menuOpenSettings.addEventListener("click", function() {
+  homeMenuPanel.hidden = true;
+  homeMenuToggle.setAttribute("aria-expanded", "false");
+  settingsPanel.hidden = false;
+});
+
+closeSettingsButton.addEventListener("click", function() {
+  settingsPanel.hidden = true;
 });
 
 closeProfileButton.addEventListener("click", function() {
