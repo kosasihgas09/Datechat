@@ -67,8 +67,10 @@
 
   setTimeout(function () {
     if (!window.__datechatModuleStarted) {
-      tampilkan("script.js belum mulai dijalankan setelah 8 detik.\n" +
-        "Kemungkinan modul atau salah satu file import gagal dimuat.");
+      const panel = document.getElementById("datechatDebugPanel");
+      const pesan = "PENANDA: script.js belum mulai dijalankan setelah 8 detik.";
+      if (panel) panel.textContent += "\n\n" + pesan;
+      else tampilkan(pesan);
     }
   }, 8000);
 })();
