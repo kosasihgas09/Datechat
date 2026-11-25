@@ -2591,6 +2591,54 @@ function openRoom(roomId) {
 
         bubble.appendChild(tombolMenuPesan);
 
+if (data.text && data.text.trim()) {
+  const tombolSalin = document.createElement("button");
+  tombolSalin.type = "button";
+  tombolSalin.className = "message-copy-button";
+  tombolSalin.textContent = "Salin";
+  tombolSalin.title = "Salin pesan";
+
+  tombolSalin.addEventListener("click", async function(event) {
+    event.stopPropagation();
+
+    try {
+      try {
+        await navigator.clipboard.writeText(data.text);
+      } catch (error) {
+        const areaSalin = document.createElement("textarea");
+        areaSalin.value = data.text;
+        areaSalin.style.position = "fixed";
+        areaSalin.style.opacity = "0";
+        document.body.appendChild(areaSalin);
+        areaSalin.select();
+
+        const berhasil = document.execCommand("copy");
+        areaSalin.remove();
+
+        if (!berhasil) {
+          throw new Error("Clipboard tidak tersedia.");
+        }
+      }
+
+      const infoSalin = document.createElement("div");
+      infoSalin.className = "system-message";
+      infoSalin.textContent = "Pesan berhasil disalin.";
+      messages.appendChild(infoSalin);
+
+      setTimeout(function() {
+        infoSalin.remove();
+      }, 1800);
+
+      bubble.classList.remove("message-actions-visible");
+    } catch (error) {
+      alert("Gagal menyalin pesan. Silakan coba lagi.");
+    }
+  });
+
+  bubble.appendChild(tombolSalin);
+}
+
+
         if (milikSaya && data.text && !data.mediaUrl) {
           const tombolEdit = document.createElement("button");
           tombolEdit.type = "button";

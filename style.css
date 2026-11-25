@@ -1597,7 +1597,8 @@ button {
 }
 
 .message-bubble .message-delete-button,
-.message-bubble .message-edit-button {
+.message-bubble .message-edit-button,
+.message-bubble .message-copy-button {
   position: absolute !important;
   top: -38px;
   display: none !important;
@@ -1624,8 +1625,13 @@ button {
   right: 39px;
 }
 
+.message-bubble .message-copy-button {
+  right: 78px;
+}
+
 .message-bubble.message-actions-visible .message-delete-button,
-.message-bubble.message-actions-visible .message-edit-button {
+.message-bubble.message-actions-visible .message-edit-button,
+.message-bubble.message-actions-visible .message-copy-button {
   display: flex !important;
 }
 
