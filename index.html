@@ -65,6 +65,17 @@
     tampilkan(hasil.join("\n\n"));
   });
 
+  document.addEventListener("DOMContentLoaded", function () {
+    import("./script.js")
+      .then(function () {
+        tampilkan("SCRIPT UTAMA: BERHASIL dievaluasi.");
+      })
+      .catch(function (error) {
+        tampilkan("SCRIPT UTAMA: GAGAL dievaluasi.\\n" +
+          (error.stack || error.message || String(error)));
+      });
+  });
+
   setTimeout(function () {
     if (!window.__datechatModuleStarted) {
       const panel = document.getElementById("datechatDebugPanel");
