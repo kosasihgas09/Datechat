@@ -60,7 +60,8 @@
   Promise.all([
     periksaModul("firebase.js", "./firebase.js"),
     periksaModul("Firebase Auth", "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
-    periksaModul("Firebase Firestore", "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+    periksaModul("Firebase Firestore", "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+    periksaModul("SCRIPT UTAMA DATECHAT", "./script.js")
   ]).then(function (hasil) {
     tampilkan(hasil.join("\n\n"));
   });
