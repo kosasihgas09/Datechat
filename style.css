@@ -1,13 +1,38 @@
 
 :root {
-  --bg: #0b141a;
-  --panel: #111b21;
-  --panel2: #202c33;
-  --green: #075e54;
-  --accent: #00a884;
-  --text: #e9edef;
-  --muted: #8696a0;
-  --border: #26353d;
+  color-scheme: dark;
+  --bg: #080f1e;
+  --panel: #101b32;
+  --panel2: #192744;
+  --green: #2456c5;
+  --accent: #3988ff;
+  --text: #edf4ff;
+  --muted: #91a4c2;
+  --border: #293b5d;
+}
+
+:root[data-theme="amoled"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --panel: #080808;
+  --panel2: #151515;
+  --green: #2456c5;
+  --accent: #3988ff;
+  --text: #f5f7fb;
+  --muted: #a0a0a0;
+  --border: #292929;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f2f5fb;
+  --panel: #ffffff;
+  --panel2: #e7edf7;
+  --green: #2456c5;
+  --accent: #2468df;
+  --text: #17243b;
+  --muted: #62718a;
+  --border: #d5deec;
 }
 
 * {
@@ -1780,5 +1805,465 @@ button {
   .partner-profile-avatar {
     width: 120px;
     height: 120px;
+  }
+}
+
+
+/* PILIHAN TEMA DATECHAT */
+.settings-select {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 15px;
+}
+
+#settingsPanel .profile-card > small {
+  display: block;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+
+/* WALLPAPER PREMIUM DATECHAT */
+.messages {
+  position: relative;
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='190' viewBox='0 0 190 190'%3E%3Cg fill='none' stroke='%233988ff' stroke-width='2' opacity='.20'%3E%3Cpath d='M17 24h53a9 9 0 0 1 9 9v25a9 9 0 0 1-9 9H43L29 77V67h-3a9 9 0 0 1-9-9V33a9 9 0 0 1 9-9z'/%3E%3Cpath d='M111 91h48a9 9 0 0 1 9 9v24a9 9 0 0 1-9 9h-19l-13 11v-11h-16a9 9 0 0 1-9-9v-24a9 9 0 0 1 9-9z'/%3E%3Cpath d='M15 143h35a8 8 0 0 1 8 8v16a8 8 0 0 1-8 8H38l-10 8v-8h-5a8 8 0 0 1-8-8v-16a8 8 0 0 1 8-8z'/%3E%3C/g%3E%3Cg fill='%233988ff' opacity='.18'%3E%3Ccircle cx='39' cy='46' r='2'/%3E%3Ccircle cx='48' cy='46' r='2'/%3E%3Ccircle cx='57' cy='46' r='2'/%3E%3Ccircle cx='126' cy='112' r='2'/%3E%3Ccircle cx='135' cy='112' r='2'/%3E%3Ccircle cx='144' cy='112' r='2'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 190px 190px;
+}
+
+
+/* WALLPAPER DATECHAT OPTIONS */
+:root[data-wallpaper="minimal"] .messages {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle, rgba(57,136,255,.13) 1px, transparent 1.5px);
+  background-size: 25px 25px;
+}
+
+:root[data-wallpaper="amoled"] .messages {
+  background-color: #000;
+  background-image:
+    radial-gradient(circle, rgba(57,136,255,.10) 1px, transparent 1.5px);
+  background-size: 30px 30px;
+}
+
+/* PENGATURAN NOTIFIKASI PREMIUM */
+#settingsPanel .settings-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  margin: 9px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#settingsPanel .settings-option input {
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+#settingsPanel .settings-action {
+  width: 100%;
+  margin-top: 14px;
+  padding: 13px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#settingsPanel #notificationStatus {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* WARNA AKSEN DATECHAT */
+:root[data-accent="blue"] {
+  --accent: #3988ff;
+}
+
+:root[data-accent="purple"] {
+  --accent: #9b6bff;
+}
+
+:root[data-accent="green"] {
+  --accent: #20bd86;
+}
+
+:root[data-accent="red"] {
+  --accent: #f05b70;
+}
+
+/* UKURAN TEKS DATECHAT */
+:root[data-text-size="small"] {
+  font-size: 14px;
+}
+
+:root[data-text-size="medium"] {
+  font-size: 16px;
+}
+
+:root[data-text-size="large"] {
+  font-size: 18px;
+}
+
+/* Kontrol pengaturan tetap mudah dibaca */
+#settingsPanel .settings-select {
+  color: var(--text);
+  background: var(--panel2);
+  border-color: var(--border);
+}
+
+
+/* HALAMAN LUPA PASSWORD */
+#resetPasswordForm input {
+  width: 100%;
+  padding: 15px;
+  margin-top: 14px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: white;
+  outline: none;
+}
+
+#resetPasswordForm input:focus {
+  border-color: var(--accent);
+}
+
+#resetPasswordForm button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: bold;
+}
+
+#resetPasswordForm #backToLogin {
+  margin-top: 10px;
+  padding: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: normal;
+}
+
+#resetPasswordMessage {
+  min-height: 20px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+/* =====================================
+   DATECHAT PREMIUM - NAVIGASI BAWAH
+===================================== */
+
+.home-screen {
+  box-sizing: border-box;
+  padding-bottom: 88px;
+}
+
+.home-footer {
+  display: none;
+}
+
+.bottom-navigation {
+  position: fixed;
+  z-index: 100;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  max-width: 650px;
+  padding: 9px 8px calc(9px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: rgba(10, 18, 38, 0.97);
+  border-top: 1px solid rgba(75, 130, 220, 0.22);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(18px);
+}
+
+.bottom-navigation button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  color: #8290ad;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.bottom-navigation button span {
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.bottom-navigation button small {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.bottom-navigation button.active {
+  background: rgba(57, 136, 255, 0.14);
+  color: #58a0ff;
+}
+
+.bottom-navigation button:active {
+  transform: scale(0.94);
+}
+
+/* =====================================
+   PANEL TEMAN
+===================================== */
+
+#friendsPanel {
+  padding: 12px;
+  min-height: 300px;
+  box-sizing: border-box;
+}
+
+#friendsPanel[hidden] {
+  display: none !important;
+}
+
+#friendsPanel .profile-card {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+}
+
+#friendsPanel .profile-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-bottom: 12px;
+  padding: 8px 0 14px;
+  background: var(--panel);
+}
+
+#friendsPanel .profile-heading h2 {
+  font-size: 19px;
+}
+
+#friendsPanel .profile-heading button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 18px;
+}
+
+#friendsPanel > .profile-card > p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+#friendsPanel .friend-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 10px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#friendsPanel .friend-search-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#friendsPanel .friend-search-card button {
+  padding: 9px 15px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 380px) {
+  .bottom-navigation {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .bottom-navigation button small {
+    font-size: 10px;
+  }
+}
+
+/* DATECHAT PREMIUM - CHAT COMPOSER */
+.chat-input-area {
+  padding: 10px 12px;
+  gap: 8px;
+  background: var(--panel);
+  border-top: 1px solid rgba(100, 145, 210, 0.12);
+}
+
+.chat-compose-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+}
+
+/* Tombol sticker minimalis */
+.sticker-compose-button {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.62;
+  font-size: 25px;
+  cursor: pointer;
+  transition: color .2s ease, opacity .2s ease, transform .2s ease;
+}
+
+.sticker-compose-button:active {
+  color: #69aaff;
+  opacity: 1;
+  transform: scale(.9);
+}
+
+/* Kolom pesan */
+.chat-compose-row textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 42px;
+  max-height: 110px;
+  padding: 10px 15px;
+  border: 1px solid rgba(115, 150, 205, .13);
+  border-radius: 24px;
+  outline: none;
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  transition: border-color .2s ease, background .2s ease;
+}
+
+.chat-compose-row textarea:focus {
+  border-color: rgba(65, 145, 255, .5);
+  background: rgba(30, 48, 78, .9);
+}
+
+/* Lampiran dan kamera */
+.chat-compose-row > .picker-button {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 21px;
+  cursor: pointer;
+  transition: .2s ease;
+}
+
+.chat-compose-row > .picker-button:active {
+  color: #69aaff;
+  transform: scale(.9);
+}
+
+/* Tombol kirim */
+.chat-compose-row > .send-button {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #398cff, #1763d5);
+  color: white;
+  font-size: 19px;
+  box-shadow: 0 3px 12px rgba(30, 110, 230, .25);
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.chat-compose-row > .send-button:active {
+  transform: scale(.91);
+  box-shadow: 0 1px 5px rgba(30, 110, 230, .2);
+}
+
+/* Panel sticker tetap berada di atas composer */
+#pickerPanel {
+  margin: 0 10px 8px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+@media (max-width: 380px) {
+  .chat-input-area {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .chat-compose-row {
+    gap: 4px;
+  }
+
+  .sticker-compose-button {
+    flex-basis: 30px;
+    width: 30px;
+  }
+
+  .chat-compose-row > .picker-button {
+    flex-basis: 30px;
+    width: 30px;
+  }
+
+  .chat-compose-row > .send-button {
+    flex-basis: 38px;
+    width: 38px;
+    height: 38px;
   }
 }

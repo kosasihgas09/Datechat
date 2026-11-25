@@ -35,11 +35,42 @@
         Masuk dengan Email
       </button>
 
+      <button type="button" id="forgotPasswordButton" class="login-text-button">
+        Lupa Password?
+      </button>
+
       <button type="button" id="registerButton">
         Buat Akun Baru
       </button>
 
       <p id="message" role="status" aria-live="polite"></p>
+    </form>
+
+    <small>PRIVATE • SECURE • CONNECTED</small>
+  </main>
+
+  <!-- HALAMAN LUPA PASSWORD -->
+  <main class="login-container" id="forgotPasswordScreen" hidden>
+    <div class="logo">🔐</div>
+    <h1>Lupa Password?</h1>
+    <p>Masukkan email akun DateChat untuk menerima tautan pemulihan password.</p>
+
+    <form id="resetPasswordForm">
+      <input
+        id="resetEmail"
+        type="email"
+        placeholder="Alamat email"
+        autocomplete="email"
+        required
+      >
+
+      <button type="submit" id="resetPasswordSubmit">OKE</button>
+
+      <p id="resetPasswordMessage" role="status" aria-live="polite"></p>
+
+      <button type="button" id="backToLogin" class="login-text-button">
+        ← Kembali ke Login
+      </button>
     </form>
 
     <small>PRIVATE • SECURE • CONNECTED</small>
@@ -176,9 +207,20 @@
           <p>Belum ada permintaan teman.</p>
         </div>
 
-        <div class="section-heading">
-          <h3>Teman Saya</h3>
+      </div>
+    </section>
+
+    <!-- PANEL DAFTAR TEMAN -->
+    <section id="friendsPanel" class="profile-panel" hidden>
+      <div class="profile-card">
+        <div class="profile-heading">
+          <h2>Teman Saya</h2>
+          <button type="button" id="closeFriends"
+            aria-label="Tutup daftar teman">✕</button>
         </div>
+
+        <p>Temukan teman dan mulai percakapan pribadi.</p>
+
         <div id="friendList">
           <p>Belum ada teman.</p>
         </div>
@@ -197,16 +239,96 @@
         <p>Atur profil dan informasi akun DateChat.</p>
 
         <div class="section-heading"><h3>Notifikasi</h3></div>
-        <p>Pengaturan pemberitahuan pesan akan tersedia di sini.</p>
+        <p>Atur pemberitahuan pesan masuk sesuai kebutuhan kamu.</p>
+
+        <label class="settings-option">
+          <input type="checkbox" id="messageNotificationsEnabled" checked>
+          <span>Notifikasi pesan masuk</span>
+        </label>
+
+        <label class="settings-option">
+          <input type="checkbox" id="notificationSoundEnabled" checked>
+          <span>Suara notifikasi</span>
+        </label>
+
+        <label class="settings-option">
+          <input type="checkbox" id="notificationVibrationEnabled" checked>
+          <span>Getar saat pesan masuk</span>
+        </label>
+
+        <label class="settings-option">
+          <input type="checkbox" id="notificationPreviewEnabled" checked>
+          <span>Tampilkan isi pesan</span>
+        </label>
+
+        <button type="button" id="enableBrowserNotifications" class="settings-action">
+          Aktifkan izin notifikasi browser
+        </button>
+        <small id="notificationStatus" aria-live="polite">
+          Pengaturan tersimpan otomatis di perangkat ini.
+        </small>
 
         <div class="section-heading"><h3>Tampilan</h3></div>
-        <p>Atur tema, warna aksen, dan ukuran teks.</p>
+        <p>Sesuaikan tampilan DateChat dengan pilihan kamu.</p>
+        <label for="themeSelect">Tema aplikasi</label>
+        <select id="themeSelect" class="settings-select">
+          <option value="navy">Dark Navy</option>
+          <option value="amoled">AMOLED Black</option>
+          <option value="light">Light Mode</option>
+        </select>
+        <small id="themeStatus" aria-live="polite">Tema tersimpan otomatis di perangkat ini.</small>
+
+        <label for="accentSelect">Warna aksen</label>
+        <select id="accentSelect" class="settings-select">
+          <option value="blue">Biru Elektrik</option>
+          <option value="purple">Ungu</option>
+          <option value="green">Hijau</option>
+          <option value="red">Merah</option>
+        </select>
+        <small id="accentStatus" aria-live="polite">Warna aksen tersimpan otomatis.</small>
+
+        <label for="textSizeSelect">Ukuran teks</label>
+        <select id="textSizeSelect" class="settings-select">
+          <option value="small">Kecil</option>
+          <option value="medium">Sedang</option>
+          <option value="large">Besar</option>
+        </select>
+        <small id="textSizeStatus" aria-live="polite">Ukuran teks tersimpan otomatis.</small>
 
         <div class="section-heading"><h3>Chat</h3></div>
         <p>Atur tampilan percakapan dan media.</p>
+        <label for="wallpaperSelect">Wallpaper ruang chat</label>
+        <select id="wallpaperSelect" class="settings-select">
+          <option value="default">Default Gelembung</option>
+          <option value="minimal">Navy Minimalis</option>
+          <option value="amoled">AMOLED Gelap</option>
+        </select>
+        <small id="wallpaperStatus" aria-live="polite">Wallpaper tersimpan otomatis di perangkat ini.</small>
 
         <div class="section-heading"><h3>Privasi & Keamanan</h3></div>
-        <p>Atur privasi akun dan keamanan sesi.</p>
+        <p>Atur siapa yang dapat melihat aktivitas akun kamu.</p>
+
+        <label for="onlineVisibilitySelect">Status online</label>
+        <select id="onlineVisibilitySelect" class="settings-select">
+          <option value="everyone">Semua orang</option>
+          <option value="nobody">Tidak ada</option>
+        </select>
+
+        <label for="lastSeenVisibilitySelect">Terakhir dilihat</label>
+        <select id="lastSeenVisibilitySelect" class="settings-select">
+          <option value="everyone">Semua orang</option>
+          <option value="nobody">Tidak ada</option>
+        </select>
+
+        <small id="privacyStatus" aria-live="polite">
+          Pengaturan privasi akun akan disimpan ke Firebase.
+        </small>
+
+        <div class="section-heading"><h3>Keamanan akun</h3></div>
+        <p>Kelola sesi login dan keamanan akun DateChat.</p>
+        <button type="button" id="logoutAllButton" class="settings-action">
+          Keluar dari akun ini
+        </button>
 
         <div class="section-heading"><h3>Penyimpanan & Tentang</h3></div>
         <p>Informasi penyimpanan dan aplikasi DateChat.</p>
@@ -248,6 +370,26 @@
     </section>
 
 
+
+    <!-- NAVIGASI BAWAH DATECHAT -->
+    <nav class="bottom-navigation" id="bottomNavigation">
+      <button type="button" id="navChats" class="active">
+        <span>💬</span>
+        <small>Chat</small>
+      </button>
+      <button type="button" id="navFriends">
+        <span>👥</span>
+        <small>Teman</small>
+      </button>
+      <button type="button" id="navNotifications">
+        <span>🔔</span>
+        <small>Notifikasi</small>
+      </button>
+      <button type="button" id="navSettings">
+        <span>⚙️</span>
+        <small>Pengaturan</small>
+      </button>
+    </nav>
 
     <footer class="home-footer">
       <span>DateChat</span>
@@ -323,23 +465,20 @@
       </div>
 
       <div class="chat-compose-row">
-        <button type="button" id="mediaToggle"
-          class="picker-button" aria-label="Lampiran">＋</button>
+        <button type="button" id="stickerToggle"
+          class="sticker-compose-button" aria-label="Pilih sticker">▧</button>
 
         <textarea id="chatInput" placeholder="Tulis pesan..."
           rows="1" maxlength="2000"></textarea>
 
+        <button type="button" id="mediaToggle"
+          class="picker-button" aria-label="Lampiran">＋</button>
+
         <button type="button" id="cameraToggle"
           class="picker-button camera-toggle" aria-label="Ambil foto">📷</button>
+
         <button type="submit" class="send-button"
           aria-label="Kirim pesan">➤</button>
-      </div>
-
-      <div class="chat-tools-row">
-        <button type="button" id="emojiToggle"
-          class="picker-button" aria-label="Pilih emoji">😀 Emoji</button>
-        <button type="button" id="stickerToggle"
-          class="picker-button" aria-label="Pilih sticker">🎭 Sticker</button>
       </div>
     </form>
 
