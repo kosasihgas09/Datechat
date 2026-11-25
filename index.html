@@ -46,6 +46,25 @@
       String(e.reason)));
   });
 
+
+  async function periksaModul(nama, alamat) {
+    try {
+      await import(alamat);
+      return nama + ": BERHASIL dimuat";
+    } catch (error) {
+      return nama + ": GAGAL\n" +
+        (error.stack || error.message || String(error));
+    }
+  }
+
+  Promise.all([
+    periksaModul("firebase.js", "./firebase.js"),
+    periksaModul("Firebase Auth", "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+    periksaModul("Firebase Firestore", "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js")
+  ]).then(function (hasil) {
+    tampilkan(hasil.join("\n\n"));
+  });
+
   setTimeout(function () {
     if (!window.__datechatModuleStarted) {
       tampilkan("script.js belum mulai dijalankan setelah 8 detik.\n" +
