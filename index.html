@@ -9,6 +9,52 @@
   <title>DateChat</title>
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
+
+<script>
+(function () {
+  function tampilkan(pesan) {
+    function buatPanel() {
+      let panel = document.getElementById("datechatDebugPanel");
+      if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "datechatDebugPanel";
+        panel.style.cssText =
+          "position:fixed;bottom:10px;left:10px;right:10px;" +
+          "z-index:999999;background:#3b1010;color:#fff;" +
+          "padding:14px;border:2px solid #ff7777;border-radius:10px;" +
+          "font:14px/1.5 monospace;white-space:pre-wrap;" +
+          "overflow-wrap:anywhere;max-height:45vh;overflow:auto;";
+        document.body.appendChild(panel);
+      }
+      panel.textContent = "DATECHAT DIAGNOSTIK\n" + pesan;
+    }
+
+    if (document.body) buatPanel();
+    else document.addEventListener("DOMContentLoaded", buatPanel, { once: true });
+  }
+
+  window.addEventListener("error", function (e) {
+    const detail = e.message ||
+      (e.target && e.target.src ? "Gagal memuat: " + e.target.src : "Error tidak dikenal");
+    tampilkan(detail + (e.filename ? "\nFile: " + e.filename : "") +
+      (e.lineno ? "\nBaris: " + e.lineno : ""));
+  }, true);
+
+  window.addEventListener("unhandledrejection", function (e) {
+    tampilkan("PROMISE ERROR:\n" +
+      (e.reason && e.reason.stack ? e.reason.stack :
+      String(e.reason)));
+  });
+
+  setTimeout(function () {
+    if (!window.__datechatModuleStarted) {
+      tampilkan("script.js belum mulai dijalankan setelah 8 detik.\n" +
+        "Kemungkinan modul atau salah satu file import gagal dimuat.");
+    }
+  }, 8000);
+})();
+</script>
+
 </head>
 <body>
 

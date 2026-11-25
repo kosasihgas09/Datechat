@@ -28,6 +28,8 @@ import {
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+window.__datechatModuleStarted = true;
+
 // ELEMEN HALAMAN
 const loginScreen = document.getElementById("loginScreen");
 const homeScreen = document.getElementById("homeScreen");
