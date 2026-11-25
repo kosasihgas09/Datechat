@@ -2267,3 +2267,321 @@ button {
     height: 38px;
   }
 }
+
+/* =========================================
+   DATECHAT PREMIUM REDESIGN
+   KHUSUS BERANDA DAN RUANG CHAT
+========================================= */
+
+:root {
+  --dc-bg: #080f1e;
+  --dc-panel: #101b32;
+  --dc-panel-soft: #152440;
+  --dc-blue: #3988ff;
+  --dc-blue-light: #62a2ff;
+  --dc-text: #edf4ff;
+  --dc-muted: #91a4c2;
+  --dc-border: rgba(110, 153, 220, .17);
+}
+
+/* BERANDA */
+#homeScreen {
+  max-width: 650px;
+  min-height: 100dvh;
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse at 90% 0%, rgba(57,136,255,.12), transparent 38%),
+    var(--dc-bg);
+  color: var(--dc-text);
+}
+
+#homeScreen .home-header {
+  padding: 22px 18px 18px;
+  background: linear-gradient(135deg, #142747, #101b32 72%);
+  border-bottom: 1px solid var(--dc-border);
+  box-shadow: 0 8px 25px rgba(0,0,0,.16);
+}
+
+#homeScreen .home-header h1 {
+  font-size: 25px;
+  font-weight: 850;
+  letter-spacing: -.8px;
+}
+
+#homeScreen .home-header h1 span {
+  color: var(--dc-blue);
+}
+
+#homeScreen .home-header p {
+  margin-top: 5px;
+  color: var(--dc-muted);
+  font-size: 12px;
+}
+
+#homeScreen .icon-button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--dc-border);
+  border-radius: 14px;
+  background: rgba(57,136,255,.10);
+  color: var(--dc-blue-light);
+  transition: .2s ease;
+}
+
+#homeScreen .icon-button:active {
+  transform: scale(.93);
+  background: rgba(57,136,255,.24);
+}
+
+#homeScreen .search-section {
+  padding: 17px 16px 12px;
+  background: transparent;
+}
+
+#homeScreen .search-section input {
+  min-height: 48px;
+  padding: 0 17px;
+  border: 1px solid var(--dc-border);
+  border-radius: 16px;
+  background: var(--dc-panel);
+  color: var(--dc-text);
+  box-shadow: 0 5px 18px rgba(0,0,0,.12);
+}
+
+#homeScreen .search-section input:focus {
+  border-color: var(--dc-blue);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(57,136,255,.13);
+}
+
+#homeScreen .conversation-tabs {
+  gap: 9px;
+  padding: 8px 16px 15px;
+  background: transparent;
+}
+
+#homeScreen .conversation-tabs button {
+  min-height: 36px;
+  padding: 0 17px;
+  border: 1px solid var(--dc-border);
+  border-radius: 20px;
+  background: var(--dc-panel);
+  color: var(--dc-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+#homeScreen .conversation-tabs button.active,
+#homeScreen .conversation-tabs button[aria-selected="true"] {
+  border-color: var(--dc-blue);
+  background: linear-gradient(135deg, #2674e8, #3988ff);
+  color: white;
+  box-shadow: 0 4px 14px rgba(57,136,255,.2);
+}
+
+#homeScreen .conversation-section {
+  min-height: 350px;
+  padding: 5px 12px 18px;
+  background: transparent;
+}
+
+#homeScreen #conversationList {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+#homeScreen #conversationList .menu-card {
+  min-height: 82px;
+  padding: 12px;
+  gap: 12px;
+  border: 1px solid var(--dc-border);
+  border-radius: 17px;
+  background: linear-gradient(115deg, #142440, #101b30);
+  box-shadow: 0 5px 16px rgba(0,0,0,.12);
+  transition: transform .18s ease, border-color .18s ease;
+}
+
+#homeScreen #conversationList .menu-card:active {
+  transform: scale(.985);
+  border-color: rgba(57,136,255,.55);
+}
+
+#homeScreen #conversationList .menu-card::before {
+  width: 49px;
+  height: 49px;
+  flex-shrink: 0;
+  border: 1px solid rgba(98,162,255,.25);
+  background: linear-gradient(145deg, #244b80, #142b4d);
+  color: #b8d6ff;
+  font-size: 21px;
+}
+
+#homeScreen #conversationList .conversation-open {
+  min-width: 0;
+}
+
+#homeScreen #conversationList .conversation-open strong {
+  color: var(--dc-text);
+  font-size: 14px;
+  font-weight: 750;
+}
+
+#homeScreen #conversationList .conversation-open small {
+  overflow: hidden;
+  color: var(--dc-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#homeScreen .bottom-navigation {
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  border: 1px solid var(--dc-border);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  background: rgba(16,27,50,.97);
+  box-shadow: 0 -8px 28px rgba(0,0,0,.24);
+  backdrop-filter: blur(18px);
+}
+
+/* RUANG CHAT */
+#chatScreen {
+  max-width: 650px;
+  height: 100dvh;
+  background: var(--dc-bg);
+  color: var(--dc-text);
+}
+
+#chatScreen .chat-header {
+  min-height: 72px;
+  padding: 12px 15px;
+  gap: 12px;
+  border-bottom: 1px solid var(--dc-border);
+  background: linear-gradient(110deg, #142747, #101b32);
+  box-shadow: 0 5px 20px rgba(0,0,0,.18);
+}
+
+#chatScreen .back-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--dc-border);
+  border-radius: 13px;
+  background: rgba(57,136,255,.10);
+  color: var(--dc-blue-light);
+  font-size: 28px;
+}
+
+#chatScreen .avatar {
+  width: 44px;
+  height: 44px;
+  border: 2px solid rgba(98,162,255,.35);
+  background: linear-gradient(145deg, #244b80, #142b4d);
+  color: #c9e0ff;
+}
+
+#chatScreen .partner-name-button {
+  color: var(--dc-text);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+#chatScreen .chat-person small {
+  color: var(--dc-muted);
+}
+
+#chatScreen .logout-button {
+  border: 1px solid var(--dc-border);
+  border-radius: 11px;
+  background: rgba(57,136,255,.10);
+  color: var(--dc-blue-light);
+}
+
+#chatScreen .messages {
+  flex: 1;
+  padding: 20px 13px;
+  background-color: var(--dc-bg);
+}
+
+#chatScreen .date-label,
+#chatScreen .system-message {
+  border: 1px solid var(--dc-border);
+  border-radius: 20px;
+  background: rgba(21,36,64,.92);
+  color: var(--dc-muted);
+}
+
+#chatScreen .message-bubble {
+  max-width: 82%;
+  padding: 11px 14px;
+  border: 1px solid var(--dc-border);
+  border-radius: 17px;
+  font-size: 14px;
+  line-height: 1.55;
+  box-shadow: 0 4px 12px rgba(0,0,0,.13);
+}
+
+#chatScreen .message-bubble.sent {
+  border: 1px solid rgba(98,162,255,.24);
+  border-top-right-radius: 5px;
+  background: linear-gradient(135deg, #1d5db5, #17478e);
+  color: #fff;
+}
+
+#chatScreen .message-bubble.received {
+  border-top-left-radius: 5px;
+  background: linear-gradient(135deg, #192b47, #14233b);
+  color: var(--dc-text);
+}
+
+#chatScreen .chat-input-area {
+  padding: 11px 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--dc-border);
+  background: #101b32;
+}
+
+#chatScreen .chat-compose-row {
+  gap: 8px;
+}
+
+#chatScreen .chat-compose-row textarea {
+  min-height: 43px;
+  border: 1px solid var(--dc-border);
+  border-radius: 22px;
+  background: #192944;
+  color: var(--dc-text);
+}
+
+#chatScreen .chat-compose-row textarea:focus {
+  border-color: var(--dc-blue);
+  outline: none;
+}
+
+#chatScreen .sticker-compose-button,
+#chatScreen .picker-button {
+  border: 1px solid var(--dc-border);
+  border-radius: 13px;
+  background: #192944;
+  color: var(--dc-blue-light);
+}
+
+#chatScreen .send-button {
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #62a2ff, #2674e8);
+  color: white;
+  box-shadow: 0 4px 13px rgba(57,136,255,.28);
+}
+
+/* ANIMASI RINGAN */
+@media (prefers-reduced-motion: no-preference) {
+  #homeScreen #conversationList .menu-card,
+  #chatScreen .message-bubble {
+    animation: datechatFadeIn .22s ease both;
+  }
+
+  @keyframes datechatFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

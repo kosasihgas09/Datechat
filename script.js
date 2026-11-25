@@ -28,7 +28,6 @@ import {
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-window.__datechatModuleStarted = true;
 
 // ELEMEN HALAMAN
 const loginScreen = document.getElementById("loginScreen");
@@ -65,7 +64,6 @@ const cancelReply = document.getElementById("cancelReply");
 const openProfileButton = document.getElementById("openProfile");
 const profilePanel = document.getElementById("profilePanel");
 const settingsPanel = document.getElementById("settingsPanel");
-const menuOpenSettings = document.getElementById("menuOpenSettings");
 const closeSettingsButton = document.getElementById("closeSettings");
 const closeProfileButton = document.getElementById("closeProfile");
 const profileAvatar = document.getElementById("profileAvatar");
@@ -614,30 +612,16 @@ closePartnerProfileButton.addEventListener("click", function() {
 // MENU TIGA TITIK BERANDA
 const homeMenuToggle = document.getElementById("homeMenuToggle");
 const homeMenuPanel = document.getElementById("homeMenuPanel");
-const menuViewProfile = document.getElementById("menuViewProfile");
-const menuViewNotifications = document.getElementById("menuViewNotifications");
 
 homeMenuToggle.addEventListener("click", function() {
   homeMenuPanel.hidden = !homeMenuPanel.hidden;
   homeMenuToggle.setAttribute("aria-expanded", String(!homeMenuPanel.hidden));
 });
 
-menuViewProfile.addEventListener("click", function() {
+openProfileButton.addEventListener("click", function() {
   homeMenuPanel.hidden = true;
   homeMenuToggle.setAttribute("aria-expanded", "false");
   profilePanel.hidden = false;
-});
-
-menuViewNotifications.addEventListener("click", function() {
-  homeMenuPanel.hidden = true;
-  homeMenuToggle.setAttribute("aria-expanded", "false");
-  notificationsPanel.hidden = false;
-});
-
-menuOpenSettings.addEventListener("click", function() {
-  homeMenuPanel.hidden = true;
-  homeMenuToggle.setAttribute("aria-expanded", "false");
-  settingsPanel.hidden = false;
 });
 
 closeSettingsButton.addEventListener("click", function() {
@@ -982,7 +966,9 @@ onAuthStateChanged(auth, async function(user) {
     profileUsernameInput.value = currentProfile.username;
     tampilkanAvatar(profileAvatar, currentProfile.photoURL);
 
-    showScreen("home");
+    homeMenuPanel.hidden = true;
+homeMenuToggle.setAttribute("aria-expanded", "false");
+showScreen("home");
     loadHiddenChats();
     loadConversations();
     loadFriendRequests();
@@ -1994,6 +1980,10 @@ function bukaBagianBeranda(bagian) {
   Object.values(panel).forEach(function(item) {
     if (item) item.hidden = true;
   });
+
+  if (bagian !== "chats" && panel[bagian]) {
+    panel[bagian].hidden = false;
+  }
 
   const daftarChat = document.querySelector(".search-section");
   const filterChat = document.querySelector(".conversation-tabs");
