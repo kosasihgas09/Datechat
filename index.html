@@ -79,6 +79,47 @@
     <small>PRIVATE • SECURE • CONNECTED</small>
   </main>
 
+  <!-- HALAMAN DAFTAR AKUN TERPISAH -->
+  <main class="login-container" id="registerScreen" hidden>
+    <div class="logo">✨</div>
+    <h1>Buat Akun</h1>
+    <p>Bergabung dengan DateChat dan mulai percakapan pribadi.</p>
+
+    <form id="registerForm">
+      <input id="registerDisplayName" type="text"
+        placeholder="Nama tampilan" maxlength="40"
+        autocomplete="name" required>
+
+      <input id="registerUsername" type="text"
+        placeholder="Username (4-20 karakter)" maxlength="20"
+        autocomplete="username" required>
+
+      <input id="registerEmail" type="email"
+        placeholder="Alamat email" autocomplete="email" required>
+
+      <input id="registerPassword" type="password"
+        placeholder="Password (minimal 6 karakter)"
+        minlength="6" autocomplete="new-password" required>
+
+      <input id="registerConfirmPassword" type="password"
+        placeholder="Ulangi password"
+        minlength="6" autocomplete="new-password" required>
+
+      <button type="submit" id="registerSubmitButton">
+        BUAT AKUN
+      </button>
+
+      <p id="registerMessage" role="status" aria-live="polite"></p>
+
+      <button type="button" id="backToLoginFromRegister"
+        class="login-text-button">
+        ← Kembali ke Login
+      </button>
+    </form>
+
+    <small>PRIVATE • SECURE • CONNECTED</small>
+  </main>
+
   <!-- HALAMAN PERCAKAPAN -->
   <main class="home-screen" id="homeScreen" hidden>
 
@@ -410,7 +451,12 @@
       <div class="avatar" id="partnerAvatar">👤</div>
 
       <div class="chat-person">
-        <button type="button" id="partnerName" class="partner-name-button">Pasangan Chat</button>
+        <div class="partner-name-row">
+          <button type="button" id="partnerName" class="partner-name-button">Pasangan Chat</button>
+          <span id="partnerOnlineStatus" class="partner-online-status" hidden>
+            <span class="partner-online-dot"></span>Online
+          </span>
+        </div>
         <small>Ruang pribadi DateChat</small>
       </div>
 
@@ -453,6 +499,31 @@
     <input type="file" id="photoInput" accept="image/*" hidden>
     <input type="file" id="videoInput" accept="video/*" hidden>
 
+    <div id="messageActionToolbar" class="message-action-toolbar" hidden>
+      <div class="message-action-info">
+        <strong id="selectedMessageLabel">Pesan dipilih</strong>
+        <button type="button" id="cancelMessageSelection" aria-label="Batal memilih">✕</button>
+      </div>
+      <div class="message-action-buttons">
+        <button type="button" id="copySelectedMessage">Salin</button>
+        <button type="button" id="forwardSelectedMessage">Teruskan</button>
+        <button type="button" id="editSelectedMessage">Edit</button>
+        <button type="button" id="deleteSelectedMessage">Hapus</button>
+        <div id="deleteMessageChoices" class="delete-message-choices" hidden>
+          <button type="button" id="deleteForEveryone">Hapus untuk semua</button>
+          <button type="button" id="deleteForMe">Hapus untuk saya</button>
+          <button type="button" id="cancelDeleteChoices">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="forwardMessagePanel" class="forward-message-panel" hidden>
+      <div class="forward-message-heading">
+        <strong>Teruskan ke percakapan</strong>
+        <button type="button" id="cancelForwardMessage">Batal</button>
+      </div>
+      <div id="forwardMessageTargets" class="forward-message-targets"></div>
+    </div>
     <form class="chat-input-area" id="chatForm">
       <div id="replyPreview" class="reply-preview" hidden>
         <div class="reply-preview-content">

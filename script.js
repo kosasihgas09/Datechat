@@ -1,5 +1,5 @@
 
-import { auth, db } from "./firebase.js";
+import { auth, db, rtdb } from "./firebase.js";
 
 import {
   doc,
@@ -13,12 +13,21 @@ import {
   limit,
   onSnapshot,
   addDoc,
+  deleteDoc,
   updateDoc,
   runTransaction,
   writeBatch,
   arrayUnion,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  ref,
+  onValue,
+  onDisconnect,
+  update,
+  serverTimestamp as rtdbServerTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 import {
   createUserWithEmailAndPassword,
@@ -43,6 +52,20 @@ const resetEmailInput = document.getElementById("resetEmail");
 const resetPasswordMessage = document.getElementById("resetPasswordMessage");
 const resetPasswordSubmit = document.getElementById("resetPasswordSubmit");
 const backToLoginButton = document.getElementById("backToLogin");
+
+const registerScreen = document.getElementById("registerScreen");
+const registerForm = document.getElementById("registerForm");
+const registerDisplayName = document.getElementById("registerDisplayName");
+const registerUsername = document.getElementById("registerUsername");
+const registerEmail = document.getElementById("registerEmail");
+const registerPassword = document.getElementById("registerPassword");
+const registerConfirmPassword = document.getElementById("registerConfirmPassword");
+const registerMessage = document.getElementById("registerMessage");
+const registerSubmitButton = document.getElementById("registerSubmitButton");
+const backToLoginFromRegister = document.getElementById("backToLoginFromRegister");
+
+let sedangProsesPendaftaran = false;
+let akunDaftarSementara = null;
 const chatForm = document.getElementById("chatForm");
 
 const messages = document.getElementById("messages");
@@ -114,6 +137,293 @@ const searchInput = document.getElementById("searchConversation");
 
 let currentUser = null;
 let currentRoomId = null;
+
+let selectedMessage = null;
+const messageActionToolbar = document.getElementById("messageActionToolbar");
+const selectedMessageLabel = document.getElementById("selectedMessageLabel");
+const cancelMessageSelection = document.getElementById("cancelMessageSelection");
+const copySelectedMessage = document.getElementById("copySelectedMessage");
+const forwardSelectedMessage = document.getElementById("forwardSelectedMessage");
+const forwardMessagePanel = document.getElementById("forwardMessagePanel");
+const forwardMessageTargets = document.getElementById("forwardMessageTargets");
+const cancelForwardMessage = document.getElementById("cancelForwardMessage");
+
+const editSelectedMessage = document.getElementById("editSelectedMessage");
+const deleteSelectedMessage = document.getElementById("deleteSelectedMessage");
+
+// PENERUSAN PESAN KE RUANG CHAT LAIN
+function tutupPanelPenerusan() {
+  if (forwardMessagePanel) forwardMessagePanel.hidden = true;
+  if (forwardMessageTargets) forwardMessageTargets.replaceChildren();
+}
+
+if (cancelForwardMessage) {
+  cancelForwardMessage.addEventListener("click", tutupPanelPenerusan);
+}
+
+if (forwardSelectedMessage) {
+  forwardSelectedMessage.addEventListener("click", function() {
+    if (!selectedMessage || !currentUser ||
+        !forwardMessagePanel || !forwardMessageTargets) return;
+
+    forwardMessageTargets.replaceChildren();
+
+    const tujuan = roomsCache.filter(function(room) {
+      return room.id !== selectedMessage.roomId &&
+        Array.isArray(room.members) &&
+        room.members.includes(currentUser.uid);
+    });
+
+    if (!tujuan.length) {
+      const kosong = document.createElement("p");
+      kosong.textContent = "Belum ada percakapan lain untuk tujuan penerusan.";
+      forwardMessageTargets.appendChild(kosong);
+    }
+
+    tujuan.forEach(function(room) {
+      const profil = partnerProfiles.get(room.id) || {};
+      const nama = profil.displayName || profil.username || "Percakapan";
+
+      const tombol = document.createElement("button");
+      tombol.type = "button";
+      tombol.className = "forward-message-target";
+      tombol.textContent = nama;
+
+      tombol.addEventListener("click", async function() {
+        if (!selectedMessage || !currentUser) return;
+
+        const pesanAsal = selectedMessage;
+        const uidPengirim = currentUser.uid;
+        tombol.disabled = true;
+        tombol.textContent = "Mengirim...";
+
+        try {
+          const bolehKirim = await bolehMengirimKeRoom(room.id, uidPengirim);
+
+          if (!bolehKirim) {
+            throw new Error("Kamu tidak dapat mengirim ke percakapan ini.");
+          }
+
+          if (!currentUser || currentUser.uid !== uidPengirim) {
+            throw new Error("Sesi akun berubah. Silakan coba lagi.");
+          }
+
+          const data = pesanAsal.data;
+          const pesanBaru = {
+            senderId: uidPengirim,
+            text: typeof data.text === "string" ? data.text : "",
+            createdAt: serverTimestamp(),
+            deliveredTo: [],
+            readBy: [],
+            forwardedFrom: {
+              roomId: pesanAsal.roomId,
+              messageId: pesanAsal.messageId,
+              senderId: data.senderId || null
+            }
+          };
+
+          ["mediaUrl", "mediaType", "mediaName"].forEach(function(kunci) {
+            if (data[kunci] !== undefined) {
+              pesanBaru[kunci] = data[kunci];
+            }
+          });
+
+          if (!pesanBaru.text && !pesanBaru.mediaUrl) {
+            throw new Error("Pesan ini tidak memiliki isi untuk diteruskan.");
+          }
+
+          await addDoc(
+            collection(db, "rooms", room.id, "messages"),
+            pesanBaru
+          );
+
+          tutupPanelPenerusan();
+          batalPilihPesanAksi();
+          alert("Pesan berhasil diteruskan ke " + nama + ".");
+        } catch (error) {
+          console.error("Gagal meneruskan pesan:", error);
+          alert("Pesan gagal diteruskan: " + error.message);
+          tombol.disabled = false;
+          tombol.textContent = nama;
+        }
+      });
+
+      forwardMessageTargets.appendChild(tombol);
+    });
+
+    forwardMessagePanel.hidden = false;
+  });
+}
+
+function batalPilihPesanAksi() {
+  if (selectedMessage && selectedMessage.bubble) {
+    selectedMessage.bubble.classList.remove("message-selected");
+  }
+
+  selectedMessage = null;
+
+  if (messageActionToolbar) {
+    messageActionToolbar.hidden = true;
+  }
+}
+
+function pilihPesanAksi(roomId, messageId, data, bubble, milikSaya) {
+  batalPilihPesanAksi();
+
+  selectedMessage = {
+    roomId: roomId,
+    messageId: messageId,
+    data: data,
+    bubble: bubble,
+    milikSaya: milikSaya
+  };
+
+  bubble.classList.add("message-selected");
+
+  if (messageActionToolbar) {
+    messageActionToolbar.hidden = false;
+  }
+
+  if (selectedMessageLabel) {
+    selectedMessageLabel.textContent = "1 pesan dipilih";
+  }
+
+  if (editSelectedMessage) {
+    editSelectedMessage.hidden = !(
+      milikSaya && data.text && !data.mediaUrl
+    );
+  }
+
+  if (copySelectedMessage) {
+    copySelectedMessage.hidden = !data.text;
+  }
+}
+
+if (cancelMessageSelection) {
+  cancelMessageSelection.addEventListener(
+    "click",
+    batalPilihPesanAksi
+  );
+}
+
+if (copySelectedMessage) {
+  copySelectedMessage.addEventListener("click", async function() {
+    if (!selectedMessage || !selectedMessage.data.text) return;
+
+    const teks = selectedMessage.data.text;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(teks);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = teks;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+
+      batalPilihPesanAksi();
+      alert("Pesan berhasil disalin.");
+    } catch (error) {
+      console.error("Gagal menyalin pesan:", error);
+      alert("Pesan gagal disalin.");
+    }
+  });
+}
+
+if (editSelectedMessage) {
+  editSelectedMessage.addEventListener("click", async function() {
+    if (!selectedMessage || !selectedMessage.milikSaya) return;
+
+    const pesan = selectedMessage;
+    if (!pesan.data.text || pesan.data.mediaUrl) return;
+
+    await editMessage(
+      pesan.roomId,
+      pesan.messageId,
+      pesan.data.text
+    );
+  });
+}
+
+
+
+
+// PILIHAN DAN KEBIJAKAN HAPUS PESAN
+const deleteMessageChoices = document.getElementById("deleteMessageChoices");
+const deleteForEveryone = document.getElementById("deleteForEveryone");
+const deleteForMe = document.getElementById("deleteForMe");
+const cancelDeleteChoices = document.getElementById("cancelDeleteChoices");
+
+function usiaPesanDalamMilidetik(data) {
+  const waktu = data && data.createdAt;
+  if (!waktu) return Infinity;
+  const dibuat = typeof waktu.toMillis === "function"
+    ? waktu.toMillis()
+    : (waktu instanceof Date ? waktu.getTime() : NaN);
+  return Number.isFinite(dibuat) ? Date.now() - dibuat : Infinity;
+}
+
+if (deleteSelectedMessage) {
+  deleteSelectedMessage.addEventListener("click", function() {
+    if (!selectedMessage) return;
+    const usia = usiaPesanDalamMilidetik(selectedMessage.data);
+    if (deleteForEveryone) {
+      deleteForEveryone.hidden = !(
+        selectedMessage.milikSaya && usia >= 0 && usia <= 60000
+      );
+    }
+    if (deleteForMe) deleteForMe.hidden = false;
+    if (deleteMessageChoices) deleteMessageChoices.hidden = false;
+  });
+}
+
+if (cancelDeleteChoices) {
+  cancelDeleteChoices.addEventListener("click", function() {
+    if (deleteMessageChoices) deleteMessageChoices.hidden = true;
+  });
+}
+
+if (deleteForMe) {
+  deleteForMe.addEventListener("click", async function() {
+    if (!selectedMessage) return;
+    const pesan = selectedMessage;
+    if (deleteMessageChoices) deleteMessageChoices.hidden = true;
+    await sembunyikanPesanUntukSaya(pesan.roomId, pesan.messageId, false);
+    batalPilihPesanAksi();
+  });
+}
+
+if (deleteForEveryone) {
+  deleteForEveryone.addEventListener("click", async function() {
+    if (!selectedMessage || !selectedMessage.milikSaya) return;
+    const pesan = selectedMessage;
+    const usia = usiaPesanDalamMilidetik(pesan.data);
+
+    if (usia < 0 || usia > 60000) {
+      alert("Batas waktu hapus untuk semua sudah lewat.");
+      deleteForEveryone.hidden = true;
+      return;
+    }
+
+    if (!confirm("Hapus pesan ini untuk semua orang?")) return;
+
+    try {
+      await deleteDoc(doc(db, "rooms", pesan.roomId, "messages", pesan.messageId));
+      if (deleteMessageChoices) deleteMessageChoices.hidden = true;
+      batalPilihPesanAksi();
+    } catch (error) {
+      console.error("Gagal menghapus pesan untuk semua:", error);
+      alert("Pesan gagal dihapus: " + error.message);
+    }
+  });
+}
+
+// LISTENER STATUS ONLINE
+let stopOwnPresenceConnection = null;
+let stopPartnerPresence = null;
 let currentFilter = "all";
 
 let stopMessages = null;
@@ -132,6 +442,47 @@ let latestUnsubs = new Map();
 let deliveryUnsubs = new Map();
 let unreadCounts = new Map();
 
+// MEMERIKSA STATUS PERTEMANAN SEBELUM MENGIRIM PESAN
+async function bolehMengirimKeRoom(roomId, uidSaya) {
+  const roomSnap = await getDoc(doc(db, "rooms", roomId));
+
+  if (!roomSnap.exists()) {
+    throw new Error("Ruang chat tidak ditemukan.");
+  }
+
+  const roomData = roomSnap.data();
+
+  if (!Array.isArray(roomData.members) ||
+      !roomData.members.includes(uidSaya)) {
+    throw new Error("Kamu bukan anggota ruang chat ini.");
+  }
+
+  if (roomData.friendshipRequired !== true) {
+    return true;
+  }
+
+  const friendUid = roomData.members.find(function(uid) {
+    return uid !== uidSaya;
+  });
+
+  if (!friendUid) return true;
+
+  const friendshipsSnap = await getDocs(query(
+    collection(db, "friendships"),
+    where("members", "array-contains", uidSaya)
+  ));
+
+  return friendshipsSnap.docs.some(function(snapshot) {
+    const data = snapshot.data();
+
+    return Array.isArray(data.members) &&
+      data.members.includes(uidSaya) &&
+      data.members.includes(friendUid);
+  });
+}
+
+
+
 // DATA PROFIL
 let currentProfile = {
   displayName: "",
@@ -146,6 +497,83 @@ let currentPartnerProfile = {
 };
 let selectedProfileFile = null;
 let stopPartnerProfile = null;
+
+// MENGELOLA STATUS ONLINE PENGGUNA
+function hentikanListenerPresenceSendiri() {
+  if (stopOwnPresenceConnection) {
+    stopOwnPresenceConnection();
+    stopOwnPresenceConnection = null;
+  }
+}
+
+async function mulaiPresenceSendiri(user) {
+  if (!user) return;
+
+  hentikanListenerPresenceSendiri();
+
+  const koneksiRef = ref(rtdb, ".info/connected");
+
+  stopOwnPresenceConnection = onValue(
+    koneksiRef,
+    async function(snapshot) {
+      if (snapshot.val() !== true) return;
+      if (!currentUser || currentUser.uid !== user.uid) return;
+
+      const presenceRef = ref(rtdb, "presence/" + user.uid);
+
+      try {
+        await onDisconnect(presenceRef).update({
+          online: false,
+          lastSeen: rtdbServerTimestamp()
+        });
+
+        await update(presenceRef, {
+          online: true,
+          privacy: {
+            onlineVisibility: privacySettings.onlineVisibility,
+            lastSeenVisibility: privacySettings.lastSeenVisibility
+          }
+        });
+      } catch (error) {
+        console.error("Gagal memperbarui status online:", error);
+      }
+    },
+    function(error) {
+      console.error("Gagal memantau koneksi Firebase:", error);
+    }
+  );
+}
+
+async function akhiriPresenceSendiri() {
+  hentikanListenerPresenceSendiri();
+
+  if (!currentUser) return;
+
+  try {
+    await update(ref(rtdb, "presence/" + currentUser.uid), {
+      online: false,
+      lastSeen: rtdbServerTimestamp()
+    });
+  } catch (error) {
+    console.warn("Gagal memperbarui status offline:", error);
+  }
+}
+
+async function sinkronkanPrivasiPresence() {
+  if (!currentUser) return;
+
+  try {
+    await update(ref(rtdb, "presence/" + currentUser.uid), {
+      privacy: {
+        onlineVisibility: privacySettings.onlineVisibility,
+        lastSeenVisibility: privacySettings.lastSeenVisibility
+      }
+    });
+  } catch (error) {
+    console.warn("Gagal menyinkronkan privasi presence:", error);
+  }
+}
+
 let stopFriendRequests = null;
 let stopFriendships = null;
 let friendProfiles = [];
@@ -275,7 +703,38 @@ function showScreen(screen) {
   loginScreen.hidden = screen !== "login";
   homeScreen.hidden = screen !== "home";
   chatScreen.hidden = screen !== "chat";
+
+  if (registerScreen) {
+    registerScreen.hidden = screen !== "register";
+  }
+
+  if (forgotPasswordScreen) {
+    forgotPasswordScreen.hidden = screen !== "forgotPassword";
+  }
 }
+
+/* NAVIGASI BACK ANDROID UNTUK HALAMAN LOGIN */
+let halamanAuthAktif = "login";
+
+function bukaHalamanAuth(halaman) {
+  halamanAuthAktif = halaman;
+  showScreen(halaman);
+  history.pushState({ datechatAuth: halaman }, "");
+}
+
+window.addEventListener("popstate", function() {
+  if (
+    halamanAuthAktif === "register" ||
+    halamanAuthAktif === "forgotPassword"
+  ) {
+    halamanAuthAktif = "login";
+    showScreen("login");
+    return;
+  }
+
+  halamanAuthAktif = "login";
+});
+
 
 // FORMAT WAKTU
 function formatTime(timestamp) {
@@ -350,16 +809,14 @@ switchLoginModeButton.addEventListener("click", function() {
 /* HALAMAN LUPA PASSWORD TERPISAH */
 forgotPasswordButton.addEventListener("click", function() {
   resetEmailInput.value = loginMode === "email" ? email.value.trim() : "";
-  loginScreen.hidden = true;
-  forgotPasswordScreen.hidden = false;
+  bukaHalamanAuth("forgotPassword");
   resetPasswordMessage.textContent = "";
   resetPasswordSubmit.disabled = false;
   resetEmailInput.focus();
 });
 
 backToLoginButton.addEventListener("click", function() {
-  forgotPasswordScreen.hidden = true;
-  loginScreen.hidden = false;
+  showScreen("login");
   resetPasswordMessage.textContent = "";
   email.value = resetEmailInput.value.trim();
   setLoginMode("email");
@@ -488,39 +945,137 @@ loginForm.addEventListener("submit", async function(event) {
   }
 });
 
-// DAFTAR AKUN
-registerButton.addEventListener("click", async function() {
-  if (loginMode !== "email") {
-    setLoginMode("email");
-    message.textContent =
-      "Masukkan email dan password untuk membuat akun.";
-    email.focus();
+// NAVIGASI HALAMAN PENDAFTARAN
+registerButton.addEventListener("click", function() {
+  bukaHalamanAuth("register");
+  registerMessage.textContent = "";
+  registerForm.reset();
+  registerDisplayName.focus();
+});
+
+backToLoginFromRegister.addEventListener("click", function() {
+  showScreen("login");
+  registerMessage.textContent = "";
+});
+
+// PROSES PENDAFTARAN AKUN DATECHAT
+registerForm.addEventListener("submit", async function(event) {
+  event.preventDefault();
+
+  const displayName = registerDisplayName.value.trim();
+  const username = registerUsername.value.trim().replace(/^@/, "").toLowerCase();
+  const alamatEmail = registerEmail.value.trim();
+  const kataSandi = registerPassword.value;
+  const konfirmasiSandi = registerConfirmPassword.value;
+
+  if (!displayName || displayName.length > 40) {
+    registerMessage.textContent = "Nama wajib diisi dan maksimal 40 karakter.";
     return;
   }
 
-  const alamatEmail = email.value.trim();
-  const kataSandi = password.value;
-
-  if (!alamatEmail || !kataSandi) {
-    message.textContent = "Isi email dan password terlebih dahulu.";
+  if (!/^[a-z0-9_]{4,20}$/.test(username)) {
+    registerMessage.textContent = "Username harus 4-20 karakter, hanya huruf kecil, angka, dan garis bawah.";
     return;
   }
 
   if (kataSandi.length < 6) {
-    message.textContent = "Password minimal 6 karakter.";
+    registerMessage.textContent = "Password minimal 6 karakter.";
     return;
   }
 
-  message.textContent = "Membuat akun...";
+  if (kataSandi !== konfirmasiSandi) {
+    registerMessage.textContent = "Konfirmasi password tidak sama.";
+    return;
+  }
+
+  registerSubmitButton.disabled = true;
+  sedangProsesPendaftaran = true;
+
   try {
-    await createUserWithEmailAndPassword(
-      auth,
-      alamatEmail,
-      kataSandi
-    );
-    message.textContent = "";
+    registerMessage.textContent = akunDaftarSementara
+      ? "Melanjutkan penyimpanan profil..."
+      : "Membuat akun Firebase...";
+
+    if (!akunDaftarSementara) {
+      const credential = await createUserWithEmailAndPassword(
+        auth, alamatEmail, kataSandi
+      );
+      akunDaftarSementara = credential.user;
+    }
+
+    const userBaru = akunDaftarSementara;
+    const userRef = doc(db, "users", userBaru.uid);
+    const profileRef = doc(db, "publicProfiles", userBaru.uid);
+    const usernameRef = doc(db, "usernames", username);
+
+    registerMessage.textContent = "Menyimpan data akun...";
+
+    await setDoc(userRef, {
+      uid: userBaru.uid,
+      email: userBaru.email
+    }, { merge: true });
+
+    await setDoc(profileRef, {
+      uid: userBaru.uid,
+      displayName: displayName,
+      photoURL: "",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    registerMessage.textContent = "Memeriksa ketersediaan username...";
+
+    await runTransaction(db, async function(transaction) {
+      const profileSnap = await transaction.get(profileRef);
+      const usernameSnap = await transaction.get(usernameRef);
+
+      if (!profileSnap.exists()) {
+        throw new Error("Profil akun belum berhasil dibuat. Silakan coba lagi.");
+      }
+
+      if (usernameSnap.exists() && usernameSnap.data().uid !== userBaru.uid) {
+        throw new Error("Username sudah digunakan orang lain. Silakan pilih username lain.");
+      }
+
+      const usernameProfil = profileSnap.data().username || "";
+      if (usernameProfil && usernameProfil !== username) {
+        throw new Error("Akun ini sudah memiliki username berbeda. Gunakan username tersebut.");
+      }
+
+      transaction.update(profileRef, {
+        displayName: displayName,
+        username: username,
+        updatedAt: serverTimestamp()
+      });
+
+      if (!usernameSnap.exists()) {
+        transaction.set(usernameRef, {
+          uid: userBaru.uid,
+          username: username,
+          createdAt: serverTimestamp()
+        });
+      }
+    });
+
+    registerMessage.textContent = "Menyinkronkan login username...";
+    await sinkronkanUsernameKeWorker(userBaru, username);
+
+    akunDaftarSementara = null;
+    registerForm.reset();
+    registerMessage.textContent = "Pendaftaran berhasil. Mengarahkan ke Login...";
+
+    sedangProsesPendaftaran = false;
+    await signOut(auth);
+
+    setLoginMode("username");
+    message.textContent =
+      "Akun berhasil dibuat. Silakan masuk dengan username atau email.";
+
   } catch (error) {
-    message.textContent = "Pendaftaran gagal: " + error.message;
+    console.error("Pendaftaran gagal:", error);
+    registerMessage.textContent = "Pendaftaran belum selesai: " + error.message;
+  } finally {
+    sedangProsesPendaftaran = false;
+    registerSubmitButton.disabled = false;
   }
 });
 
@@ -665,7 +1220,7 @@ openProfileButton.addEventListener("click", function() {
 });
 
 closeSettingsButton.addEventListener("click", function() {
-  settingsPanel.hidden = true;
+  bukaBagianBeranda("chats");
 });
 
 closeProfileButton.addEventListener("click", function() {
@@ -924,6 +1479,9 @@ saveProfileButton.addEventListener("click", async function() {
 onAuthStateChanged(auth, async function(user) {
   currentUser = user;
 
+  // TAHAN NAVIGASI OTOMATIS SELAMA PROSES PENDAFTARAN
+  if (sedangProsesPendaftaran) return;
+
   // RESET PANEL SAAT STATUS LOGIN BERUBAH
   settingsPanel.hidden = true;
 
@@ -933,6 +1491,7 @@ onAuthStateChanged(auth, async function(user) {
   if (stopFriendRequests) stopFriendRequests();
   if (stopFriendships) stopFriendships();
   if (stopPartnerProfile) stopPartnerProfile();
+  if (stopPartnerPresence) stopPartnerPresence();
   if (stopRooms) stopRooms();
 
   clearLatestListeners();
@@ -944,8 +1503,12 @@ onAuthStateChanged(auth, async function(user) {
   hiddenChats.clear();
   hiddenChatsLoaded = false;
   stopPartnerProfile = null;
+  stopPartnerPresence = null;
   stopRooms = null;
   currentRoomId = null;
+
+  const statusOnlineHeader = document.getElementById("partnerOnlineStatus");
+  if (statusOnlineHeader) statusOnlineHeader.hidden = true;
   roomsCache = [];
 
   if (!user) {
@@ -970,6 +1533,9 @@ onAuthStateChanged(auth, async function(user) {
         ? profilSnap.data()
         : { uid: user.uid, email: user.email }
     );
+
+    // AKTIFKAN STATUS ONLINE SETELAH PRIVASI DIMUAT
+    await mulaiPresenceSendiri(user);
 
     // MUAT PROFIL PUBLIK
     const publicProfileRef = doc(db, "publicProfiles", user.uid);
@@ -1168,16 +1734,23 @@ async function bukaChatDenganTeman(friendUid) {
 
     if (ruangAda) {
       roomId = ruangAda.id;
+
+      await updateDoc(ruangAda.ref, {
+        friendshipRequired: true
+      });
+
       dataRuang = {
         id: roomId,
-        ...ruangAda.data()
+        ...ruangAda.data(),
+        friendshipRequired: true
       };
     } else {
       const ruangBaru = await addDoc(collection(db, "rooms"), {
         type: "private",
         members: [uidSaya, friendUid],
         createdBy: uidSaya,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        friendshipRequired: true
       });
 
       roomId = ruangBaru.id;
@@ -1185,7 +1758,8 @@ async function bukaChatDenganTeman(friendUid) {
         id: roomId,
         type: "private",
         members: [uidSaya, friendUid],
-        createdBy: uidSaya
+        createdBy: uidSaya,
+        friendshipRequired: true
       };
     }
 
@@ -1208,6 +1782,63 @@ async function bukaChatDenganTeman(friendUid) {
   } catch (error) {
     console.error("Gagal membuka chat teman:", error);
     alert("Gagal membuka chat: " + error.message);
+  }
+}
+
+// MENGHAPUS PERTEMANAN
+async function hapusTeman(item) {
+  if (!currentUser || !item || !item.friendshipId || !item.requestId) {
+    alert("Data pertemanan tidak lengkap.");
+    return;
+  }
+
+  const uidSaya = currentUser.uid;
+  const friendUid = item.uid;
+  const nama = item.profil.displayName || "teman ini";
+
+  const yakin = confirm(
+    "Hapus " + nama + " dari daftar teman?\n\n" +
+    "Riwayat chat lama tetap tersimpan, tetapi kalian harus berteman lagi " +
+    "untuk mengirim pesan baru."
+  );
+
+  if (!yakin) return;
+
+  try {
+    const ruangSnap = await getDocs(query(
+      collection(db, "rooms"),
+      where("members", "array-contains", uidSaya)
+    ));
+
+    if (!currentUser || currentUser.uid !== uidSaya) return;
+
+    const ruangBersama = ruangSnap.docs.filter(function(ruang) {
+      const data = ruang.data();
+      return Array.isArray(data.members) &&
+        data.members.includes(friendUid);
+    });
+
+    if (ruangBersama.length > 498) {
+      throw new Error("Terlalu banyak ruang chat untuk diproses sekaligus.");
+    }
+
+    const batch = writeBatch(db);
+
+    ruangBersama.forEach(function(ruang) {
+      batch.update(ruang.ref, {
+        friendshipRequired: true
+      });
+    });
+
+    batch.delete(doc(db, "friendships", item.friendshipId));
+    batch.delete(doc(db, "friendRequests", item.requestId));
+
+    await batch.commit();
+
+    alert("Pertemanan berhasil dihapus. Riwayat chat tetap tersimpan.");
+  } catch (error) {
+    console.error("Gagal menghapus teman:", error);
+    alert("Gagal menghapus teman: " + error.message);
   }
 }
 
@@ -1239,6 +1870,10 @@ function loadFriendships() {
 
           return {
             uid: friendUid,
+            friendshipId: item.id,
+            requestId: data.requestId || item.id,
+            senderId: data.senderId,
+            recipientId: data.recipientId,
             profil: profilSnap.exists() ? profilSnap.data() : {}
           };
         })
@@ -1278,6 +1913,15 @@ function loadFriendships() {
         });
 
         kartu.appendChild(tombolChat);
+
+        const tombolHapus = document.createElement("button");
+        tombolHapus.type = "button";
+        tombolHapus.textContent = "Hapus Teman";
+        tombolHapus.addEventListener("click", function() {
+          hapusTeman(item);
+        });
+
+        kartu.appendChild(tombolHapus);
         daftar.appendChild(kartu);
       });
     },
@@ -1843,36 +2487,91 @@ document.addEventListener("pointerdown", function(event) {
   });
 }, true);
 
-// EDIT PESAN TEKS MILIK SENDIRI
+// EDIT PESAN LANGSUNG DI DALAM GELEMBUNG CHAT
 async function editMessage(roomId, messageId, teksLama) {
-  if (!currentUser) return;
+  const bubble = document.querySelector(
+    '.message-bubble[data-message-id="' + messageId + '"]'
+  );
 
-  const teksBaru = prompt("Edit pesan:", teksLama);
-  if (teksBaru === null) return;
+  if (!bubble) return;
 
-  const teksBersih = teksBaru.trim();
-  if (!teksBersih) {
-    alert("Pesan tidak boleh kosong.");
-    return;
-  }
-  if (teksBersih === teksLama) return;
-  if (teksBersih.length > 2000) {
-    alert("Pesan maksimal 2.000 karakter.");
-    return;
-  }
+  const isiPesan = bubble.querySelector(".message-text");
+  if (!isiPesan || bubble.querySelector(".inline-message-editor")) return;
 
-  try {
-    await updateDoc(
-      doc(db, "rooms", roomId, "messages", messageId),
-      {
-        text: teksBersih,
-        editedAt: serverTimestamp()
-      }
-    );
-  } catch (error) {
-    console.error("Gagal mengedit pesan:", error);
-    alert("Pesan gagal diedit: " + error.message);
-  }
+  isiPesan.hidden = true;
+
+  const editor = document.createElement("div");
+  editor.className = "inline-message-editor";
+
+  const textarea = document.createElement("textarea");
+  textarea.value = teksLama;
+  textarea.maxLength = 2000;
+  textarea.rows = 3;
+  textarea.className = "inline-message-textarea";
+  textarea.setAttribute("aria-label", "Edit pesan");
+
+  const tombolSimpan = document.createElement("button");
+  tombolSimpan.type = "button";
+  tombolSimpan.textContent = "Simpan";
+  tombolSimpan.className = "inline-edit-save";
+
+  const tombolBatal = document.createElement("button");
+  tombolBatal.type = "button";
+  tombolBatal.textContent = "Batal";
+  tombolBatal.className = "inline-edit-cancel";
+
+  const aksi = document.createElement("div");
+  aksi.className = "inline-message-editor-actions";
+  aksi.append(tombolSimpan, tombolBatal);
+  editor.append(textarea, aksi);
+  bubble.appendChild(editor);
+
+  tombolBatal.addEventListener("click", function(event) {
+    event.stopPropagation();
+    editor.remove();
+    isiPesan.hidden = false;
+  });
+
+  tombolSimpan.addEventListener("click", async function(event) {
+    event.stopPropagation();
+
+    const teksBaru = textarea.value.trim();
+
+    if (!teksBaru) {
+      alert("Pesan tidak boleh kosong.");
+      textarea.focus();
+      return;
+    }
+
+    if (teksBaru === teksLama) {
+      tombolBatal.click();
+      return;
+    }
+
+    tombolSimpan.disabled = true;
+    tombolSimpan.textContent = "Menyimpan...";
+
+    try {
+      await updateDoc(
+        doc(db, "rooms", roomId, "messages", messageId),
+        {
+          text: teksBaru,
+          editedAt: serverTimestamp()
+        }
+      );
+      editor.remove();
+      isiPesan.hidden = false;
+      batalPilihPesanAksi();
+    } catch (error) {
+      console.error("Gagal mengedit pesan:", error);
+      alert("Pesan gagal diedit: " + error.message);
+      tombolSimpan.disabled = false;
+      tombolSimpan.textContent = "Simpan";
+    }
+  });
+
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 }
 
 // PENGELOLAAN RIWAYAT CHAT
@@ -2031,7 +2730,7 @@ const notificationsPanel = document.getElementById("notificationsPanel");
 const closeNotificationsButton = document.getElementById("closeNotifications");
 
 closeNotificationsButton.addEventListener("click", function() {
-  notificationsPanel.hidden = true;
+  bukaBagianBeranda("chats");
 });
 
 // MENU CHAT BARU
@@ -2245,7 +2944,16 @@ document.getElementById("findByUsername")
         tombolTeman.textContent = "Permintaan sebelumnya ditolak";
         tombolTeman.disabled = true;
       } else {
-        tombolTeman.textContent = "Tambah Teman";
+        tombolTeman.classList.add("add-friend-button");
+        tombolTeman.innerHTML = `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="10" cy="7" r="4"></circle>
+            <line x1="19" y1="8" x2="19" y2="14"></line>
+            <line x1="22" y1="11" x2="16" y2="11"></line>
+          </svg>
+          <span>Tambah Teman</span>
+        `;
 
         tombolTeman.addEventListener("click", async function() {
           tombolTeman.disabled = true;
@@ -2370,14 +3078,14 @@ function batalBalasPesan() {
 cancelReply.addEventListener("click", batalBalasPesan);
 
 // SEMBUNYIKAN PESAN UNTUK AKUN SENDIRI
-async function sembunyikanPesanUntukSaya(roomId, messageId) {
+async function sembunyikanPesanUntukSaya(roomId, messageId, perluKonfirmasi = true) {
   if (!currentUser) return;
-
-  const yakin = confirm(
-    "Hapus pesan ini dari tampilan akun kamu? Pesan asli tetap terlihat oleh lawan chat."
-  );
-
-  if (!yakin) return;
+  if (perluKonfirmasi) {
+    const yakin = confirm(
+      "Hapus pesan ini dari tampilan akun kamu? Pesan asli tetap terlihat oleh lawan chat."
+    );
+    if (!yakin) return;
+  }
 
   const hiddenId = roomId + "_" + messageId;
 
@@ -2408,6 +3116,14 @@ function openRoom(roomId) {
     stopPartnerProfile();
     stopPartnerProfile = null;
   }
+
+  if (stopPartnerPresence) {
+    stopPartnerPresence();
+    stopPartnerPresence = null;
+  }
+
+  const partnerOnlineStatus = document.getElementById("partnerOnlineStatus");
+  if (partnerOnlineStatus) partnerOnlineStatus.hidden = true;
 
   const stateSaatIni = history.state || {};
 
@@ -2452,6 +3168,20 @@ function openRoom(roomId) {
     : null;
 
   if (partnerUid) {
+    if (partnerOnlineStatus) {
+      stopPartnerPresence = onValue(
+        ref(rtdb, "presence/" + partnerUid + "/online"),
+        function(snapshot) {
+          if (currentRoomId !== roomId) return;
+          partnerOnlineStatus.hidden = snapshot.val() !== true;
+        },
+        function(error) {
+          console.warn("Status online teman tidak dapat dibaca:", error);
+          partnerOnlineStatus.hidden = true;
+        }
+      );
+    }
+
     stopPartnerProfile = onSnapshot(
       doc(db, "publicProfiles", partnerUid),
       function(snapshot) {
@@ -2652,15 +3382,18 @@ if (data.text && data.text.trim()) {
           bubble.appendChild(tombolEdit);
         }
 
-        // MENU AKSI PESAN MUNCUL SAAT DITEKAN LAMA
+        // PILIH PESAN DENGAN TEKAN LAMA ATAU SENTUH
         let timerTekanPesan = null;
         let tekanLamaAktif = false;
 
-        bubble.addEventListener("pointerdown", function() {
+        bubble.addEventListener("pointerdown", function(event) {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+
           tekanLamaAktif = false;
+
           timerTekanPesan = setTimeout(function() {
             tekanLamaAktif = true;
-            bubble.classList.add("message-actions-visible");
+            pilihPesanAksi(roomId, item.id, data, bubble, milikSaya);
           }, 500);
         });
 
@@ -2673,16 +3406,25 @@ if (data.text && data.text.trim()) {
         bubble.addEventListener("contextmenu", function(event) {
           event.preventDefault();
           tekanLamaAktif = true;
-          bubble.classList.add("message-actions-visible");
+          pilihPesanAksi(roomId, item.id, data, bubble, milikSaya);
         });
 
         bubble.addEventListener("click", function(event) {
           if (tekanLamaAktif) {
             tekanLamaAktif = false;
+            event.preventDefault();
             return;
           }
+
           if (!event.target.closest("button")) {
-            bubble.classList.remove("message-actions-visible");
+            if (
+              selectedMessage &&
+              selectedMessage.messageId === item.id
+            ) {
+              batalPilihPesanAksi();
+            } else {
+              pilihPesanAksi(roomId, item.id, data, bubble, milikSaya);
+            }
           }
         });
 
@@ -2821,10 +3563,12 @@ chatForm.addEventListener("submit", async function(event) {
 
   if (!text || !currentUser || !currentRoomId) return;
 
+  const roomIdTujuan = currentRoomId;
+  const uidPengirim = currentUser.uid;
   const balasanAktif = selectedReply;
 
   const pesanBaru = {
-    senderId: currentUser.uid,
+    senderId: uidPengirim,
     text: text,
     createdAt: serverTimestamp(),
     deliveredTo: [],
@@ -2840,17 +3584,35 @@ chatForm.addEventListener("submit", async function(event) {
   }
 
   try {
+    const bolehKirim = await bolehMengirimKeRoom(
+      roomIdTujuan,
+      uidPengirim
+    );
+
+    if (!bolehKirim) {
+      alert("Kalian sudah tidak berteman. Kirim permintaan teman baru untuk mengirim pesan lagi.");
+      return;
+    }
+
+    if (!currentUser || currentUser.uid !== uidPengirim ||
+        currentRoomId !== roomIdTujuan) {
+      throw new Error("Ruang chat berubah. Silakan kirim ulang pesan.");
+    }
+
     await addDoc(
-      collection(db, "rooms", currentRoomId, "messages"),
+      collection(db, "rooms", roomIdTujuan, "messages"),
       pesanBaru
     );
 
-    chatInput.value = "";
-    chatInput.style.height = "44px";
-    suggestionPanel.hidden = true;
+    if (currentUser && currentUser.uid === uidPengirim &&
+        currentRoomId === roomIdTujuan) {
+      chatInput.value = "";
+      chatInput.style.height = "44px";
+      suggestionPanel.hidden = true;
 
-    if (selectedReply === balasanAktif) {
-      batalBalasPesan();
+      if (selectedReply === balasanAktif) {
+        batalBalasPesan();
+      }
     }
 
   } catch (error) {
@@ -2975,17 +3737,39 @@ function bukaPicker(jenis) {
 async function kirimSticker(simbol) {
   if (!currentUser || !currentRoomId) return;
 
+  const roomIdTujuan = currentRoomId;
+  const uidPengirim = currentUser.uid;
+
   try {
+    const bolehKirim = await bolehMengirimKeRoom(
+      roomIdTujuan,
+      uidPengirim
+    );
+
+    if (!bolehKirim) {
+      alert("Kalian sudah tidak berteman. Kirim permintaan teman baru untuk mengirim sticker lagi.");
+      return;
+    }
+
+    if (!currentUser || currentUser.uid !== uidPengirim ||
+        currentRoomId !== roomIdTujuan) {
+      throw new Error("Ruang chat berubah. Silakan kirim ulang sticker.");
+    }
+
     await addDoc(
-      collection(db, "rooms", currentRoomId, "messages"),
+      collection(db, "rooms", roomIdTujuan, "messages"),
       {
-        senderId: currentUser.uid,
+        senderId: uidPengirim,
         text: simbol,
         createdAt: serverTimestamp()
       }
     );
 
-    tutupPicker();
+    if (currentUser && currentUser.uid === uidPengirim &&
+        currentRoomId === roomIdTujuan) {
+      tutupPicker();
+    }
+
   } catch (error) {
     console.error("Gagal mengirim sticker:", error);
     alert("Sticker gagal dikirim: " + error.message);
@@ -3041,11 +3825,16 @@ function kembaliKeDaftarChat() {
   if (stopMessages) stopMessages();
   if (stopHiddenMessages) stopHiddenMessages();
   if (stopPartnerProfile) stopPartnerProfile();
+  if (stopPartnerPresence) stopPartnerPresence();
+
+  const statusOnlineHeader = document.getElementById("partnerOnlineStatus");
+  if (statusOnlineHeader) statusOnlineHeader.hidden = true;
 
   stopMessages = null;
   stopHiddenMessages = null;
   hiddenMessageIds.clear();
   stopPartnerProfile = null;
+  stopPartnerPresence = null;
   currentRoomId = null;
 
   showScreen("home");
@@ -3073,16 +3862,22 @@ async function logout() {
     if (stopMessages) stopMessages();
     if (stopHiddenMessages) stopHiddenMessages();
     if (stopPartnerProfile) stopPartnerProfile();
+    if (stopPartnerPresence) stopPartnerPresence();
     if (stopRooms) stopRooms();
+
+    const statusOnlineHeader = document.getElementById("partnerOnlineStatus");
+    if (statusOnlineHeader) statusOnlineHeader.hidden = true;
 
     stopMessages = null;
     stopHiddenMessages = null;
     hiddenMessageIds.clear();
     stopPartnerProfile = null;
+    stopPartnerPresence = null;
     stopRooms = null;
 
     clearLatestListeners();
 
+    await akhiriPresenceSendiri();
     await signOut(auth);
   } catch (error) {
     alert("Gagal keluar: " + error.message);
@@ -3182,14 +3977,26 @@ async function uploadMediaDateChat(file, mediaType) {
   const user = currentUser;
   const roomId = currentRoomId;
   const balasanAktif = selectedReply;
-  const fileUpload =
-    mediaType === "image"
-      ? await siapkanFotoUntukUpload(file)
-      : file;
 
   if (!user || !roomId) {
     throw new Error("Buka percakapan terlebih dahulu.");
   }
+
+  const bolehKirim = await bolehMengirimKeRoom(roomId, user.uid);
+
+  if (!bolehKirim) {
+    throw new Error("Kalian sudah tidak berteman. Kirim permintaan teman baru untuk mengirim media lagi.");
+  }
+
+  if (!currentUser || currentUser.uid !== user.uid ||
+      currentRoomId !== roomId) {
+    throw new Error("Ruang chat berubah. Silakan coba kembali.");
+  }
+
+  const fileUpload =
+    mediaType === "image"
+      ? await siapkanFotoUntukUpload(file)
+      : file;
 
   const idToken = await user.getIdToken();
 
@@ -3236,6 +4043,21 @@ async function uploadMediaDateChat(file, mediaType) {
 
   if (!currentUser || currentUser.uid !== user.uid) {
     throw new Error("Sesi login berubah. Silakan coba kembali.");
+  }
+
+  if (currentRoomId !== roomId) {
+    throw new Error("Ruang chat berubah. Media tidak dikirim.");
+  }
+
+  const masihBerteman = await bolehMengirimKeRoom(roomId, user.uid);
+
+  if (!masihBerteman) {
+    throw new Error("Pertemanan sudah dihapus. Media tidak dapat dikirim.");
+  }
+
+  if (!currentUser || currentUser.uid !== user.uid ||
+      currentRoomId !== roomId) {
+    throw new Error("Sesi atau ruang chat berubah. Silakan coba kembali.");
   }
 
   const pesanMedia = {
@@ -3703,6 +4525,8 @@ async function savePrivacySettings() {
     await updateDoc(doc(db, "users", currentUser.uid), {
       privacySettings: { ...privacySettings }
     });
+
+    await sinkronkanPrivasiPresence();
 
     if (privacyStatus) {
       privacyStatus.textContent = "Pengaturan privasi berhasil disimpan ke Firebase.";

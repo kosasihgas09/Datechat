@@ -2680,3 +2680,340 @@ button {
 #homeScreen #conversationList .conversation-unread-badge[hidden] {
   display: none !important;
 }
+
+/* PERBAIKAN KARTU TEMAN - NAMA DAN USERNAME */
+#friendsPanel .friend-search-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+}
+
+#friendsPanel .friend-search-card strong,
+#friendsPanel .friend-search-card p {
+  grid-column: 1 / -1;
+  min-width: 0;
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+#friendsPanel .friend-search-card button {
+  grid-column: auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
+/* KUNCI URUTAN KARTU TEMAN */
+#friendsPanel #friendList .friend-search-card {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-rows: auto auto auto !important;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 8px;
+}
+
+#friendsPanel #friendList .friend-search-card strong {
+  grid-column: 1 / -1 !important;
+  grid-row: 1 !important;
+  display: block;
+  margin: 0;
+}
+
+#friendsPanel #friendList .friend-search-card p {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  display: block;
+  margin: 0;
+}
+
+#friendsPanel #friendList .friend-search-card button:first-of-type {
+  grid-column: 1 !important;
+  grid-row: 3 !important;
+  width: 100%;
+}
+
+#friendsPanel #friendList .friend-search-card button:last-of-type {
+  grid-column: 2 !important;
+  grid-row: 3 !important;
+  width: 100%;
+}
+
+/* FORM LOGIN, REGISTER, DAN RESET PASSWORD */
+#registerForm input,
+#resetPasswordForm input {
+  width: 100%;
+  padding: 15px;
+  margin-top: 14px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: white;
+  outline: none;
+  box-sizing: border-box;
+}
+
+#registerForm input:focus,
+#resetPasswordForm input:focus {
+  border-color: var(--accent);
+}
+
+#registerForm button,
+#resetPasswordForm button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: bold;
+}
+
+#registerForm .login-text-button,
+#resetPasswordForm .login-text-button {
+  margin-top: 10px;
+  padding: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: normal;
+}
+
+#registerMessage,
+#resetPasswordMessage {
+  min-height: 20px;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+/* TOMBOL TAMBAH TEMAN PREMIUM */
+.add-friend-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 16px !important;
+  border: 1px solid rgba(96, 165, 250, 0.4) !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.add-friend-button svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.add-friend-button:active {
+  transform: scale(0.96);
+}
+
+.add-friend-button:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+
+/* CSS FITUR PESAN TERBARU */
+
+
+#chatScreen .message-action-toolbar {
+  padding: 10px 12px;
+  border-top: 1px solid var(--dc-border);
+  background: #14233b;
+}
+
+#chatScreen .message-action-toolbar[hidden] {
+  display: none;
+}
+
+#chatScreen .message-action-info,
+#chatScreen .message-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#chatScreen .message-action-info {
+  margin-bottom: 9px;
+  color: var(--dc-text);
+  font-size: 12px;
+}
+
+#chatScreen .message-action-info button,
+#chatScreen .message-action-buttons button {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--dc-border);
+  border-radius: 10px;
+  background: #1b3152;
+  color: var(--dc-text);
+  font-size: 12px;
+}
+
+#chatScreen .message-action-buttons button {
+  flex: 1;
+}
+
+#chatScreen .message-action-buttons button:active {
+  background: #28518a;
+}
+
+#chatScreen .message-bubble.message-selected {
+  outline: 2px solid #62a2ff;
+  outline-offset: 2px;
+}
+
+
+.delete-message-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 2px;
+}
+
+.delete-message-choices button {
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+  font: inherit;
+}
+
+.delete-message-choices button[hidden] {
+  display: none !important;
+}
+
+
+.inline-message-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.inline-message-textarea {
+  width: 100%;
+  min-height: 76px;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid rgba(80, 150, 255, .55);
+  border-radius: 10px;
+  background: rgba(8, 18, 40, .95);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.inline-message-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.inline-message-editor-actions button {
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 13px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.inline-edit-save {
+  background: #2563eb;
+}
+
+.inline-edit-cancel {
+  background: rgba(255,255,255,.12);
+}
+
+
+.forward-message-panel {
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid rgba(80, 150, 255, .3);
+  border-radius: 12px;
+  background: rgba(12, 25, 52, .96);
+}
+
+.forward-message-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.forward-message-heading button,
+.forward-message-target {
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 9px;
+  background: rgba(255,255,255,.07);
+  color: inherit;
+  font: inherit;
+}
+
+.forward-message-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.forward-message-target {
+  width: 100%;
+  text-align: left;
+}
+
+.forward-message-target:disabled {
+  opacity: .6;
+}
+
+/* STATUS ONLINE PASANGAN */
+.partner-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.partner-online-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #55df9a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.partner-online-status[hidden] {
+  display: none !important;
+}
+
+.partner-online-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #35d889;
+  box-shadow: 0 0 8px rgba(53, 216, 137, .65);
+}
