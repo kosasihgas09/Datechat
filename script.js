@@ -3209,7 +3209,7 @@ async function uploadMediaDateChat(file, mediaType) {
   }
 
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", fileUpload);
   formData.append(
     "fileName",
     user.uid + "_" + Date.now() + "_" + fileUpload.name
@@ -3277,6 +3277,14 @@ function handleMedia(inputId, mediaType, sumber) {
     const file = this.files[0];
 
     if (!file) return;
+
+    console.log("[DEBUG MEDIA]", {
+      sumber,
+      nama: file.name,
+      tipe: file.type,
+      ukuran: file.size,
+      terakhirDiubah: file.lastModified
+    });
 
     const namaFile = file.name.toLowerCase();
     const ekstensiFoto = /\.(jpg|jpeg|png|webp|heic|heif)$/i;
