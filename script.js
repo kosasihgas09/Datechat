@@ -3884,8 +3884,10 @@ async function logout() {
   }
 }
 
-document.getElementById("logoutButton")
-  .addEventListener("click", logout);
+const logoutButton = document.getElementById("logoutButton");
+if (logoutButton) {
+  logoutButton.addEventListener("click", logout);
+}
 
 document.getElementById("logoutHome")
   .addEventListener("click", logout);

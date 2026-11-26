@@ -457,12 +457,36 @@
             <span class="partner-online-dot"></span>Online
           </span>
         </div>
-        <small>Ruang pribadi DateChat</small>
+
       </div>
 
-      <button type="button" id="logoutButton"
-        class="logout-button">Keluar</button>
     </header>
+
+    <div id="messageActionToolbar" class="message-action-toolbar" hidden>
+      <div class="message-action-info">
+        <strong id="selectedMessageLabel">Pesan dipilih</strong>
+        <button type="button" id="cancelMessageSelection" aria-label="Batal" title="Batal">✕</button>
+      </div>
+      <div class="message-action-buttons">
+        <button type="button" id="copySelectedMessage" aria-label="Salin" title="Salin">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+        <button type="button" id="forwardSelectedMessage" aria-label="Teruskan" title="Teruskan">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+    </button>
+        <button type="button" id="editSelectedMessage" aria-label="Edit" title="Edit">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-.8L19 8a2.1 2.1 0 0 0-3-3L5 16z"/></svg>
+    </button>
+        <button type="button" id="deleteSelectedMessage" aria-label="Hapus" title="Hapus">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/></svg>
+    </button>
+        <div id="deleteMessageChoices" class="delete-message-choices" hidden>
+          <button type="button" id="deleteForEveryone">Hapus untuk semua</button>
+          <button type="button" id="deleteForMe">Hapus untuk saya</button>
+          <button type="button" id="cancelDeleteChoices">Batal</button>
+        </div>
+      </div>
+    </div>
 
     <div class="message-search">
       <input
@@ -483,11 +507,11 @@
     <div id="pickerPanel" class="picker-panel" hidden></div>
 
     <div id="mediaPanel" class="media-panel" hidden>
-      <button type="button" id="attachCamera">📷 Kamera</button>
-      <button type="button" id="attachVideo">🎥 Video</button>
-      <button type="button" id="attachGallery">🖼️ Galeri Foto</button>
-      <button type="button" id="attachGalleryVideo">🎬 Galeri Video</button>
-      <button type="button" id="attachLink">🔗 Tautan</button>
+      <button type="button" id="attachCamera"><svg viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Kamera</span></button>
+      <button type="button" id="attachVideo"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg><span>Video</span></button>
+      <button type="button" id="attachGallery"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span>Galeri Foto</span></button>
+      <button type="button" id="attachGalleryVideo"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3z"/></svg><span>Galeri Video</span></button>
+      <button type="button" id="attachLink"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1 0l3-3A5 5 0 0 0 13 2.9l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 21.1l1.7-1.7"/></svg><span>Tautan</span></button>
     </div>
 
     <input type="file" id="cameraPhotoInput"
@@ -498,24 +522,6 @@
 
     <input type="file" id="photoInput" accept="image/*" hidden>
     <input type="file" id="videoInput" accept="video/*" hidden>
-
-    <div id="messageActionToolbar" class="message-action-toolbar" hidden>
-      <div class="message-action-info">
-        <strong id="selectedMessageLabel">Pesan dipilih</strong>
-        <button type="button" id="cancelMessageSelection" aria-label="Batal memilih">✕</button>
-      </div>
-      <div class="message-action-buttons">
-        <button type="button" id="copySelectedMessage">Salin</button>
-        <button type="button" id="forwardSelectedMessage">Teruskan</button>
-        <button type="button" id="editSelectedMessage">Edit</button>
-        <button type="button" id="deleteSelectedMessage">Hapus</button>
-        <div id="deleteMessageChoices" class="delete-message-choices" hidden>
-          <button type="button" id="deleteForEveryone">Hapus untuk semua</button>
-          <button type="button" id="deleteForMe">Hapus untuk saya</button>
-          <button type="button" id="cancelDeleteChoices">Batal</button>
-        </div>
-      </div>
-    </div>
 
     <div id="forwardMessagePanel" class="forward-message-panel" hidden>
       <div class="forward-message-heading">
@@ -535,19 +541,27 @@
 
       <div class="chat-compose-row">
         <button type="button" id="stickerToggle"
-          class="sticker-compose-button" aria-label="Pilih sticker">▧</button>
+          class="sticker-compose-button" aria-label="Pilih sticker" title="Sticker">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H17a3 3 0 0 1 3 3v8l-7 7H6.5A2.5 2.5 0 0 1 4 17.5z"/><path d="M13 20v-5a2 2 0 0 1 2-2h5"/></svg>
+        </button>
 
         <textarea id="chatInput" placeholder="Tulis pesan..."
           rows="1" maxlength="2000"></textarea>
 
         <button type="button" id="mediaToggle"
-          class="picker-button" aria-label="Lampiran">＋</button>
+          class="picker-button" aria-label="Lampiran" title="Lampiran">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
 
         <button type="button" id="cameraToggle"
-          class="picker-button camera-toggle" aria-label="Ambil foto">📷</button>
+          class="picker-button camera-toggle" aria-label="Ambil foto" title="Kamera">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        </button>
 
         <button type="submit" class="send-button"
-          aria-label="Kirim pesan">➤</button>
+          aria-label="Kirim pesan" title="Kirim pesan">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12 19 5l-4 14-3-6z"/><path d="m12 13 7-8"/></svg>
+        </button>
       </div>
     </form>
 
