@@ -39,6 +39,7 @@ import {
 
 
 // ELEMEN HALAMAN
+const authLoadingScreen = document.getElementById("authLoadingScreen");
 const loginScreen = document.getElementById("loginScreen");
 const homeScreen = document.getElementById("homeScreen");
 const chatScreen = document.getElementById("chatScreen");
@@ -1000,6 +1001,7 @@ function terapkanPencarianPesan() {
 
 // TAMPILKAN HALAMAN
 function showScreen(screen) {
+  authLoadingScreen.hidden = screen !== "loading";
   loginScreen.hidden = screen !== "login";
   homeScreen.hidden = screen !== "home";
   chatScreen.hidden = screen !== "chat";
