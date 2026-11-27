@@ -4154,3 +4154,36 @@ button {
 .camera-gallery-menu button:active {
   background: #263a58;
 }
+
+
+
+/* DATECHAT - FIX VIEWPORT KEYBOARD AND CHAT HEADER */
+#chatScreen {
+  position: fixed;
+  top: var(--dc-visible-top, 0px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 650px);
+  height: var(--dc-visible-height, 100dvh);
+  max-height: var(--dc-visible-height, 100dvh);
+  min-height: 0;
+  margin: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+#chatScreen > .chat-header {
+  flex: 0 0 auto;
+}
+
+#chatScreen > .messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#chatScreen > .chat-input-area,
+#chatScreen > #messageEditPanel {
+  flex-shrink: 0;
+}

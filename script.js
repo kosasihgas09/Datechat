@@ -4524,58 +4524,86 @@ async function mulaiStreamKameraDateChat() {
     throw new Error("Kamera tidak didukung browser ini. Gunakan Chrome melalui HTTPS atau localhost.");
   }
 
-  const daftarKamera = await navigator.mediaDevices.enumerateDevices();
-  let opsiVideo = { facingMode: { ideal: dateChatCameraFacing } };
-
-  if (dateChatCameraFacing === "environment") {
-    const kameraBelakang = daftarKamera.filter(function(device) {
-      return device.kind === "videoinput" &&
-        /belakang|back|environment|kamera [0-9]/i.test(device.label);
-    });
-
-    const pilihanLensa = kameraBelakang.find(function(device) {
-      return /camera 2|kamera 2/i.test(device.label);
-    });
-
-    if (pilihanLensa) {
-      opsiVideo = { deviceId: { exact: pilihanLensa.deviceId } };
-    }
-  }
+  let streamSementara = null;
 
   try {
-    dateChatCameraStream = await navigator.mediaDevices.getUserMedia({
-      video: opsiVideo,
-      audio: dateChatCameraMode === "video"
+    // Buka kamera sesuai arah yang diminta untuk memperoleh izin.
+    // Label kamera biasanya baru tersedia setelah izin diberikan.
+    const audioAktif = dateChatCameraMode === "video";
+
+    streamSementara = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: dateChatCameraFacing } },
+      audio: audioAktif
     });
-  } catch (error) {
-    console.error("Gagal memilih lensa kamera:", error);
-    throw new Error(
-      "Gagal membuka lensa pilihan: " +
-      error.name + " - " + error.message
-    );
-  }
 
-  const cameraTrack = dateChatCameraStream.getVideoTracks()[0];
+    // Setelah izin tersedia, baca ulang daftar kamera.
+    if (dateChatCameraFacing === "environment") {
+      const daftarKamera = await navigator.mediaDevices.enumerateDevices();
 
-  if (cameraTrack && cameraTrack.getCapabilities) {
-    const capabilities = cameraTrack.getCapabilities();
+      const kameraBelakang = daftarKamera.filter(function(device) {
+        return device.kind === "videoinput" &&
+          /belakang|back|environment|camera|kamera/i.test(device.label);
+      });
 
-    if (capabilities.zoom) {
-      try {
-        await cameraTrack.applyConstraints({
-          advanced: [{ zoom: capabilities.zoom.min }]
-        });
-      } catch (error) {
-        console.warn("Pengaturan zoom minimum tidak didukung:", error);
+      const pilihanLensa = kameraBelakang.find(function(device) {
+        return /camera 2|kamera 2/i.test(device.label);
+      });
+
+      if (pilihanLensa) {
+        const trackAwal = streamSementara.getVideoTracks()[0];
+        const pengaturanAwal = trackAwal && trackAwal.getSettings
+          ? trackAwal.getSettings()
+          : {};
+
+        // Hanya buka ulang jika kamera awal bukan Camera 2.
+        if (pengaturanAwal.deviceId !== pilihanLensa.deviceId) {
+          streamSementara.getTracks().forEach(function(track) {
+            track.stop();
+          });
+
+          streamSementara = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: pilihanLensa.deviceId } },
+            audio: audioAktif
+          });
+        }
       }
     }
+
+    dateChatCameraStream = streamSementara;
+    streamSementara = null;
+
+    const cameraTrack = dateChatCameraStream.getVideoTracks()[0];
+
+    // Terapkan zoom minimum sebelum video ditampilkan.
+    if (cameraTrack && cameraTrack.getCapabilities) {
+      const capabilities = cameraTrack.getCapabilities();
+
+      if (capabilities.zoom) {
+        try {
+          await cameraTrack.applyConstraints({
+            advanced: [{ zoom: capabilities.zoom.min }]
+          });
+        } catch (error) {
+          console.warn("Pengaturan zoom minimum tidak didukung:", error);
+        }
+      }
+    }
+
+    cameraLiveVideo.srcObject = dateChatCameraStream;
+    cameraLiveVideo.hidden = false;
+    await cameraLiveVideo.play();
+
+  } catch (error) {
+    if (streamSementara) {
+      streamSementara.getTracks().forEach(function(track) {
+        track.stop();
+      });
+    }
+
+    hentikanStreamKameraDateChat();
+    throw error;
   }
-
-  cameraLiveVideo.srcObject = dateChatCameraStream;
-  cameraLiveVideo.hidden = false;
-  await cameraLiveVideo.play();
 }
-
 async function bukaKameraDateChat(mode = "photo") {
   if (!currentUser || !currentRoomId) {
     alert("Buka percakapan terlebih dahulu.");
@@ -5267,3 +5295,46 @@ if (lastSeenVisibilitySelect) {
     await savePrivacySettings();
   });
 }
+
+
+
+// DATECHAT - ANDROID KEYBOARD VIEWPORT FIX
+(function () {
+  function sesuaikanViewportChat() {
+    if (!chatScreen) return;
+
+    const viewport = window.visualViewport;
+
+    if (viewport) {
+      chatScreen.style.setProperty(
+        "--dc-visible-height",
+        Math.max(0, viewport.height) + "px"
+      );
+      chatScreen.style.setProperty(
+        "--dc-visible-top",
+        Math.max(0, viewport.offsetTop) + "px"
+      );
+    } else {
+      chatScreen.style.setProperty(
+        "--dc-visible-height",
+        window.innerHeight + "px"
+      );
+      chatScreen.style.setProperty("--dc-visible-top", "0px");
+    }
+  }
+
+  sesuaikanViewportChat();
+
+  window.addEventListener("resize", sesuaikanViewportChat);
+
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", sesuaikanViewportChat);
+    window.visualViewport.addEventListener("scroll", sesuaikanViewportChat);
+  }
+
+  document.addEventListener("focusin", function (event) {
+    if (chatScreen && chatScreen.contains(event.target)) {
+      sesuaikanViewportChat();
+    }
+  });
+})();
