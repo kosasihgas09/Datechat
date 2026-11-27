@@ -4113,3 +4113,44 @@ button {
   min-width: 90px;
   min-height: 40px;
 }
+
+
+/* MENU PILIHAN GALERI DI DALAM KAMERA DATECHAT */
+.datechat-camera-footer {
+  position: relative;
+}
+
+.camera-gallery-menu {
+  position: absolute;
+  left: 10px;
+  bottom: calc(100% - 8px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 145px;
+  padding: 7px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  background: #172236;
+  box-shadow: 0 6px 22px rgba(0,0,0,.4);
+}
+
+.camera-gallery-menu[hidden] {
+  display: none !important;
+}
+
+.camera-gallery-menu button {
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: white;
+  text-align: left;
+  font-size: 13px;
+}
+
+.camera-gallery-menu button:active {
+  background: #263a58;
+}

@@ -3939,24 +3939,9 @@ document.getElementById("cameraToggle").addEventListener("click", function() {
   bukaKameraDateChat("photo");
 });
 
-document.getElementById("attachCamera").addEventListener("click", function() {
-  mediaPanel.hidden = true;
-  bukaKameraDateChat("photo");
-});
-
-document.getElementById("attachVideo").addEventListener("click", function() {
-  mediaPanel.hidden = true;
-  bukaKameraDateChat("video");
-});
-
 document.getElementById("attachGallery").addEventListener("click", function() {
   mediaPanel.hidden = true;
   document.getElementById("photoInput").click();
-});
-
-document.getElementById("attachGalleryVideo").addEventListener("click", function() {
-  mediaPanel.hidden = true;
-  document.getElementById("videoInput").click();
 });
 
 document.getElementById("attachLink").addEventListener("click", function() {
@@ -4807,8 +4792,20 @@ document.getElementById("cameraModeVideo").addEventListener("click", async funct
 });
 
 document.getElementById("cameraGalleryButton").addEventListener("click", function() {
+  const menu = document.getElementById("cameraGalleryMenu");
+  menu.hidden = !menu.hidden;
+});
+
+document.getElementById("cameraGalleryPhoto").addEventListener("click", function() {
+  document.getElementById("cameraGalleryMenu").hidden = true;
   tutupKameraDateChat();
   document.getElementById("photoInput").click();
+});
+
+document.getElementById("cameraGalleryVideo").addEventListener("click", function() {
+  document.getElementById("cameraGalleryMenu").hidden = true;
+  tutupKameraDateChat();
+  document.getElementById("videoInput").click();
 });
 
 document.getElementById("cameraRetake").addEventListener("click", async function() {
