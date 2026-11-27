@@ -514,6 +514,54 @@
       <button type="button" id="attachLink"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1 0l3-3A5 5 0 0 0 13 2.9l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.1 0l-3 3A5 5 0 0 0 11 21.1l1.7-1.7"/></svg><span>Tautan</span></button>
     </div>
 
+    <section id="dateChatCamera" class="datechat-camera" hidden>
+      <header class="datechat-camera-header">
+        <button type="button" id="cameraClose" aria-label="Tutup kamera">✕</button>
+        <span id="cameraRecordStatus">Kamera DateChat</span>
+        <button type="button" id="cameraSwitch" aria-label="Ganti kamera">↻</button>
+      </header>
+
+      <div class="datechat-camera-stage">
+        <video id="cameraLiveVideo" autoplay playsinline muted></video>
+        <img id="cameraPreviewImage" alt="Pratinjau foto" hidden>
+        <video id="cameraPreviewVideo" controls playsinline hidden></video>
+        <canvas id="cameraCanvas" hidden></canvas>
+      </div>
+
+      <div class="datechat-camera-footer">
+        <button type="button" id="cameraGalleryButton" aria-label="Buka galeri">
+  <svg viewBox="0 0 24 24" width="29" height="29" fill="none"
+       stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="3"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <path d="m21 15-5-5L5 21"/>
+  </svg>
+  <small>Galeri</small>
+</button>
+
+        <div class="datechat-camera-modes">
+  <button type="button" id="cameraModeVideo" aria-label="Mode video">
+    <svg viewBox="0 0 24 24" width="29" height="29" fill="none"
+         stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="13" height="12" rx="2"/>
+      <path d="m16 10 5-3v10l-5-3"/>
+    </svg>
+    <small>Video</small>
+  </button>
+  <button type="button" id="cameraModePhoto" class="active camera-photo-mode-legacy">FOTO</button>
+</div>
+
+        <button type="button" id="cameraCapture" aria-label="Ambil foto">
+          <span></span>
+        </button>
+
+        <div id="cameraPreviewActions" hidden>
+          <button type="button" id="cameraRetake">Ulangi</button>
+          <button type="button" id="cameraSend">Kirim</button>
+        </div>
+      </div>
+    </section>
+
     <input type="file" id="cameraPhotoInput"
       accept="image/*" capture="environment" hidden>
 
@@ -524,13 +572,45 @@
     <input type="file" id="videoInput" accept="video/*" hidden>
 
     <div id="forwardMessagePanel" class="forward-message-panel" hidden>
-      <div class="forward-message-heading">
-        <strong>Teruskan ke percakapan</strong>
-        <button type="button" id="cancelForwardMessage">Batal</button>
-      </div>
-      <div id="forwardMessageTargets" class="forward-message-targets"></div>
+  <div class="forward-message-heading">
+    <button type="button" id="cancelForwardMessage"
+      aria-label="Kembali">←</button>
+    <div class="forward-message-heading-text">
+      <strong>Teruskan pesan</strong>
+      <span>Pilih penerima pesan</span>
     </div>
-    <form class="chat-input-area" id="chatForm">
+  </div>
+
+  <div class="forward-user-search">
+    <label for="forwardUsernameInput">Cari pengguna DateChat</label>
+    <div class="forward-user-search-row">
+      <input id="forwardUsernameInput" type="text"
+        placeholder="Cari dengan @username..." maxlength="21"
+        autocomplete="off" spellcheck="false">
+      <button type="button" id="forwardUsernameSearch">Cari</button>
+    </div>
+    <div id="forwardUsernameResult" aria-live="polite"></div>
+  </div>
+
+  <div id="forwardMessageTargets"
+    class="forward-message-targets" hidden></div>
+</div>
+<div id="messageEditPanel" class="message-edit-panel" hidden>
+  <div class="message-edit-heading">
+    <div class="message-edit-heading-text">
+      <strong>Edit pesan</strong>
+      <span>Ubah pesan yang ingin diperbarui</span>
+    </div>
+    <button type="button" id="cancelMessageEdit" aria-label="Tutup edit">✕</button>
+  </div>
+  <textarea id="messageEditTextarea" maxlength="2000"
+    rows="2" placeholder="Edit pesan..." aria-label="Isi pesan yang diedit"></textarea>
+  <div class="message-edit-actions">
+    <button type="button" id="cancelMessageEditBottom">Batal</button>
+    <button type="button" id="saveMessageEdit">Simpan perubahan</button>
+  </div>
+</div>
+<form class="chat-input-area" id="chatForm">
       <div id="replyPreview" class="reply-preview" hidden>
         <div class="reply-preview-content">
           <strong id="replyPreviewName">Membalas pesan</strong>

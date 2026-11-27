@@ -214,13 +214,7 @@ if (forwardSelectedMessage) {
             text: typeof data.text === "string" ? data.text : "",
             createdAt: serverTimestamp(),
             deliveredTo: [],
-            readBy: [],
-            forwardedFrom: {
-              roomId: pesanAsal.roomId,
-              messageId: pesanAsal.messageId,
-              senderId: data.senderId || null
-            }
-          };
+            readBy: [],};
 
           ["mediaUrl", "mediaType", "mediaName"].forEach(function(kunci) {
             if (data[kunci] !== undefined) {
@@ -255,6 +249,289 @@ if (forwardSelectedMessage) {
   });
 }
 
+
+// DATECHAT FORWARD SEARCH BY USERNAME
+const forwardUsernameInput = document.getElementById("forwardUsernameInput");
+const forwardUsernameSearch = document.getElementById("forwardUsernameSearch");
+const forwardUsernameResult = document.getElementById("forwardUsernameResult");
+
+if (forwardUsernameSearch && forwardUsernameInput && forwardUsernameResult) {
+  async function cariPenggunaUntukForward() {
+    const username = forwardUsernameInput.value.trim()
+      .replace(/^@/, "").toLowerCase();
+
+    forwardUsernameResult.replaceChildren();
+
+    if (!selectedMessage || !currentUser) {
+      forwardUsernameResult.textContent = "Pilih pesan yang ingin diteruskan terlebih dahulu.";
+      return;
+    }
+
+    if (!/^[a-z0-9_]{4,20}$/.test(username)) {
+      forwardUsernameResult.textContent =
+        "Username harus 4-20 karakter, huruf kecil, angka, atau garis bawah.";
+      return;
+    }
+
+    const tombolCari = forwardUsernameSearch;
+    tombolCari.disabled = true;
+    tombolCari.textContent = "Mencari...";
+
+    try {
+      const usernameSnap = await getDoc(doc(db, "usernames", username));
+
+      if (!usernameSnap.exists()) {
+        forwardUsernameResult.textContent = "Username tidak ditemukan.";
+        return;
+      }
+
+      const pemilik = usernameSnap.data();
+      const uidTeman = pemilik.uid;
+      const uidSaya = currentUser.uid;
+
+      if (!uidTeman || pemilik.username !== username || uidTeman === uidSaya) {
+        forwardUsernameResult.textContent = "Data pengguna tidak valid.";
+        return;
+      }
+
+      const profilSnap = await getDoc(doc(db, "publicProfiles", uidTeman));
+
+      if (!profilSnap.exists()) {
+        forwardUsernameResult.textContent = "Profil pengguna tidak ditemukan.";
+        return;
+      }
+
+      const profil = profilSnap.data();
+
+      if (profil.uid !== uidTeman || profil.username !== username) {
+        forwardUsernameResult.textContent = "Data profil tidak cocok.";
+        return;
+      }
+
+      const friendshipSnap = await getDocs(query(
+        collection(db, "friendships"),
+        where("members", "array-contains", uidSaya)
+      ));
+
+      const sudahTeman = friendshipSnap.docs.some(function(item) {
+        const anggota = item.data().members;
+        return Array.isArray(anggota) && anggota.includes(uidTeman);
+      });
+
+      if (!sudahTeman) {
+        forwardUsernameResult.textContent =
+          "Kamu belum berteman dengan @" + username +
+          ". Tambahkan teman terlebih dahulu melalui menu Teman.";
+        return;
+      }
+
+      const kartu = document.createElement("div");
+      kartu.className = "forward-user-result-card";
+
+      if (profil.photoURL) {
+        const foto = document.createElement("img");
+        foto.src = profil.photoURL;
+        foto.alt = "Foto profil";
+        foto.className = "friend-search-avatar";
+        kartu.appendChild(foto);
+      } else {
+        const avatar = document.createElement("div");
+        avatar.className = "forward-user-placeholder";
+        avatar.textContent = (profil.displayName || username).charAt(0).toUpperCase();
+        kartu.appendChild(avatar);
+      }
+
+      const info = document.createElement("div");
+      info.className = "forward-user-info";
+
+      const nama = document.createElement("strong");
+      nama.textContent = profil.displayName || "Pengguna DateChat";
+
+      const id = document.createElement("span");
+      id.textContent = "@" + username;
+
+      info.append(nama, id);
+
+      const tombolKirim = document.createElement("button");
+      tombolKirim.type = "button";
+      tombolKirim.className = "forward-user-send";
+      tombolKirim.textContent = "Teruskan";
+
+      kartu.append(info, tombolKirim);
+      forwardUsernameResult.appendChild(kartu);
+
+      tombolKirim.addEventListener("click", async function() {
+        if (!selectedMessage || !currentUser) return;
+
+        const pesanAsal = selectedMessage;
+        const uidPengirim = currentUser.uid;
+
+        tombolKirim.disabled = true;
+        tombolKirim.textContent = "Mengirim...";
+        let tahapForward = "memeriksa pertemanan";
+
+        try {
+                    tahapForward = "memeriksa pertemanan";
+          const friendshipTerbaru = await getDocs(query(
+            collection(db, "friendships"),
+            where("members", "array-contains", uidPengirim)
+          ));
+
+          const masihTeman = friendshipTerbaru.docs.some(function(item) {
+            const anggota = item.data().members;
+            return Array.isArray(anggota) && anggota.includes(uidTeman);
+          });
+
+          if (!masihTeman) {
+            throw new Error("Pertemanan sudah tidak aktif.");
+          }
+
+          if (!currentUser || currentUser.uid !== uidPengirim) {
+            throw new Error("Sesi akun berubah. Silakan coba lagi.");
+          }
+
+                    tahapForward = "memuat ruang chat";
+          const ruangSnap = await getDocs(query(
+            collection(db, "rooms"),
+            where("members", "array-contains", uidPengirim)
+          ));
+
+          if (ruangSnap.docs.length > 498) {
+            throw new Error("Terlalu banyak ruang chat untuk diproses.");
+          }
+
+          const ruangAda = ruangSnap.docs.find(function(item) {
+            const dataRuang = item.data();
+            const anggota = dataRuang.members;
+
+            return dataRuang.type === "private"
+              && Array.isArray(anggota)
+              && anggota.length === 2
+              && anggota.includes(uidPengirim)
+              && anggota.includes(uidTeman);
+          });
+
+          let roomId;
+          let dataRuang;
+
+          if (ruangAda) {
+            roomId = ruangAda.id;
+                      tahapForward = "memperbarui ruang chat";
+          await updateDoc(ruangAda.ref, {
+              friendshipRequired: true
+            });
+            dataRuang = {
+              id: roomId,
+              ...ruangAda.data(),
+              friendshipRequired: true
+            };
+          } else {
+                      tahapForward = "membuat ruang chat";
+          const ruangBaru = await addDoc(collection(db, "rooms"), {
+              type: "private",
+              members: [uidPengirim, uidTeman],
+              createdBy: uidPengirim,
+              createdAt: serverTimestamp(),
+              friendshipRequired: true
+            });
+
+            roomId = ruangBaru.id;
+            dataRuang = {
+              id: roomId,
+              type: "private",
+              members: [uidPengirim, uidTeman],
+              createdBy: uidPengirim,
+              friendshipRequired: true
+            };
+          }
+
+          if (!currentUser || currentUser.uid !== uidPengirim) {
+            throw new Error("Sesi akun berubah. Silakan coba lagi.");
+          }
+
+                    tahapForward = "memeriksa izin ruang chat";
+          const bolehKirim = await bolehMengirimKeRoom(roomId, uidPengirim);
+          if (!bolehKirim) {
+            throw new Error("Kamu tidak dapat mengirim ke percakapan ini.");
+          }
+
+          const data = pesanAsal.data;
+          const pesanBaru = {
+            senderId: uidPengirim,
+            text: typeof data.text === "string" ? data.text : "",
+            createdAt: serverTimestamp(),
+            deliveredTo: [],
+            readBy: []
+          };
+          ["mediaUrl", "mediaType", "mediaName"].forEach(function(kunci) {
+            if (data[kunci] !== undefined) {
+              pesanBaru[kunci] = data[kunci];
+            }
+          });
+
+          if (!pesanBaru.text && !pesanBaru.mediaUrl) {
+            throw new Error("Pesan ini tidak memiliki isi untuk diteruskan.");
+          }
+
+                    tahapForward = "menyimpan pesan ke ruang tujuan";
+          await addDoc(
+            collection(db, "rooms", roomId, "messages"),
+            pesanBaru
+          );
+
+          const index = roomsCache.findIndex(function(room) {
+            return room.id === roomId;
+          });
+
+          if (index === -1) {
+            roomsCache.push(dataRuang);
+          } else {
+            roomsCache[index] = dataRuang;
+          }
+
+          updateLatestListeners();
+          renderConversations();
+
+          tutupPanelPenerusan();
+          batalPilihPesanAksi();
+          alert("Pesan berhasil diteruskan ke " +
+            (profil.displayName || "@" + username) + ".");
+        } catch (error) {
+          console.error("Gagal meneruskan pesan ke pengguna:", {
+            tahap: tahapForward,
+            code: error.code,
+            message: error.message,
+            error: error
+          });
+          alert(
+            "Gagal pada tahap: " + tahapForward +
+            "\nKode: " + (error.code || "tidak tersedia") +
+            "\nPesan: " + error.message
+          );
+          tombolKirim.disabled = false;
+          tombolKirim.textContent = "Teruskan";
+        }
+      });
+
+    } catch (error) {
+      console.error("Pencarian Forward gagal:", error);
+      forwardUsernameResult.textContent = "Gagal mencari pengguna. Coba lagi.";
+    } finally {
+      tombolCari.disabled = false;
+      tombolCari.textContent = "Cari";
+    }
+  }
+
+  forwardUsernameSearch.addEventListener("click", cariPenggunaUntukForward);
+
+  forwardUsernameInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      cariPenggunaUntukForward();
+    }
+  });
+}
+
 function batalPilihPesanAksi() {
   if (selectedMessage && selectedMessage.bubble) {
     selectedMessage.bubble.classList.remove("message-selected");
@@ -263,7 +540,16 @@ function batalPilihPesanAksi() {
   selectedMessage = null;
 
   if (messageActionToolbar) {
+    messageActionToolbar.classList.remove("is-deleting");
     messageActionToolbar.hidden = true;
+  }
+
+  if (deleteMessageChoices) {
+    deleteMessageChoices.hidden = true;
+  }
+
+  if (selectedMessageLabel) {
+    selectedMessageLabel.textContent = "Pesan dipilih";
   }
 }
 
@@ -369,6 +655,13 @@ function usiaPesanDalamMilidetik(data) {
 if (deleteSelectedMessage) {
   deleteSelectedMessage.addEventListener("click", function() {
     if (!selectedMessage) return;
+
+    if (messageActionToolbar) {
+      messageActionToolbar.classList.add("is-deleting");
+    }
+    if (selectedMessageLabel) {
+      selectedMessageLabel.textContent = "Hapus pesan";
+    }
     const usia = usiaPesanDalamMilidetik(selectedMessage.data);
     if (deleteForEveryone) {
       deleteForEveryone.hidden = !(
@@ -383,6 +676,13 @@ if (deleteSelectedMessage) {
 if (cancelDeleteChoices) {
   cancelDeleteChoices.addEventListener("click", function() {
     if (deleteMessageChoices) deleteMessageChoices.hidden = true;
+
+    if (messageActionToolbar) {
+      messageActionToolbar.classList.remove("is-deleting");
+    }
+    if (selectedMessageLabel) {
+      selectedMessageLabel.textContent = "1 pesan dipilih";
+    }
   });
 }
 
@@ -2487,54 +2787,59 @@ document.addEventListener("pointerdown", function(event) {
   });
 }, true);
 
-// EDIT PESAN LANGSUNG DI DALAM GELEMBUNG CHAT
+// EDIT PESAN - PANEL BAWAH SEPERTI WHATSAPP
 async function editMessage(roomId, messageId, teksLama) {
-  const bubble = document.querySelector(
-    '.message-bubble[data-message-id="' + messageId + '"]'
-  );
+  const panel = document.getElementById("messageEditPanel");
+  const textarea = document.getElementById("messageEditTextarea");
+  const chatForm = document.getElementById("chatForm");
+  const tombolSimpan = document.getElementById("saveMessageEdit");
+  const tombolBatal = document.getElementById("cancelMessageEdit");
+  const tombolBatalBawah = document.getElementById("cancelMessageEditBottom");
 
-  if (!bubble) return;
+  if (!panel || !textarea || !chatForm || !tombolSimpan) {
+    alert("Panel edit pesan belum tersedia.");
+    return;
+  }
 
-  const isiPesan = bubble.querySelector(".message-text");
-  if (!isiPesan || bubble.querySelector(".inline-message-editor")) return;
+  if (!panel.hidden) return;
 
-  isiPesan.hidden = true;
+  // Tutup toolbar pemilihan pesan saat editor dibuka
+  if (typeof batalPilihPesanAksi === "function") {
+    batalPilihPesanAksi();
+  }
 
-  const editor = document.createElement("div");
-  editor.className = "inline-message-editor";
+  textarea.value = teksLama || "";
+  panel.hidden = false;
+  chatForm.hidden = true;
 
-  const textarea = document.createElement("textarea");
-  textarea.value = teksLama;
-  textarea.maxLength = 2000;
-  textarea.rows = 3;
-  textarea.className = "inline-message-textarea";
-  textarea.setAttribute("aria-label", "Edit pesan");
+  function tutupEditor() {
+    panel.hidden = true;
+    chatForm.hidden = false;
+    textarea.value = "";
+    tombolSimpan.disabled = false;
+    tombolSimpan.textContent = "Simpan perubahan";
+  }
 
-  const tombolSimpan = document.createElement("button");
-  tombolSimpan.type = "button";
-  tombolSimpan.textContent = "Simpan";
-  tombolSimpan.className = "inline-edit-save";
+  function batalEdit() {
+    tutupEditor();
+  }
 
-  const tombolBatal = document.createElement("button");
-  tombolBatal.type = "button";
-  tombolBatal.textContent = "Batal";
-  tombolBatal.className = "inline-edit-cancel";
+  if (!tombolBatal.dataset.editBound) {
+    tombolBatal.addEventListener("click", batalEdit);
+    tombolBatal.dataset.editBound = "1";
+  }
 
-  const aksi = document.createElement("div");
-  aksi.className = "inline-message-editor-actions";
-  aksi.append(tombolSimpan, tombolBatal);
-  editor.append(textarea, aksi);
-  bubble.appendChild(editor);
+  if (!tombolBatalBawah.dataset.editBound) {
+    tombolBatalBawah.addEventListener("click", batalEdit);
+    tombolBatalBawah.dataset.editBound = "1";
+  }
 
-  tombolBatal.addEventListener("click", function(event) {
-    event.stopPropagation();
-    editor.remove();
-    isiPesan.hidden = false;
-  });
+  // Ganti handler tombol simpan agar tidak terpasang berulang
+  if (tombolSimpan._editHandler) {
+    tombolSimpan.removeEventListener("click", tombolSimpan._editHandler);
+  }
 
-  tombolSimpan.addEventListener("click", async function(event) {
-    event.stopPropagation();
-
+  const simpanEdit = async function() {
     const teksBaru = textarea.value.trim();
 
     if (!teksBaru) {
@@ -2544,7 +2849,7 @@ async function editMessage(roomId, messageId, teksLama) {
     }
 
     if (teksBaru === teksLama) {
-      tombolBatal.click();
+      tutupEditor();
       return;
     }
 
@@ -2559,16 +2864,18 @@ async function editMessage(roomId, messageId, teksLama) {
           editedAt: serverTimestamp()
         }
       );
-      editor.remove();
-      isiPesan.hidden = false;
-      batalPilihPesanAksi();
+
+      tutupEditor();
     } catch (error) {
       console.error("Gagal mengedit pesan:", error);
       alert("Pesan gagal diedit: " + error.message);
       tombolSimpan.disabled = false;
-      tombolSimpan.textContent = "Simpan";
+      tombolSimpan.textContent = "Simpan perubahan";
     }
-  });
+  };
+
+  tombolSimpan._editHandler = simpanEdit;
+  tombolSimpan.addEventListener("click", simpanEdit);
 
   textarea.focus();
   textarea.setSelectionRange(textarea.value.length, textarea.value.length);
@@ -3629,18 +3936,17 @@ mediaToggle.addEventListener("click", function() {
 });
 
 document.getElementById("cameraToggle").addEventListener("click", function() {
-  mediaPanel.hidden = true;
-  document.getElementById("cameraPhotoInput").click();
+  bukaKameraDateChat("photo");
 });
 
 document.getElementById("attachCamera").addEventListener("click", function() {
   mediaPanel.hidden = true;
-  document.getElementById("cameraPhotoInput").click();
+  bukaKameraDateChat("photo");
 });
 
 document.getElementById("attachVideo").addEventListener("click", function() {
   mediaPanel.hidden = true;
-  document.getElementById("cameraVideoInput").click();
+  bukaKameraDateChat("video");
 });
 
 document.getElementById("attachGallery").addEventListener("click", function() {
@@ -4177,6 +4483,386 @@ handleMedia("cameraVideoInput", "video", "kamera");
 handleMedia("photoInput", "image", "galeri");
 handleMedia("videoInput", "video", "galeri");
 
+
+
+/* KAMERA INTERNAL DATECHAT */
+const dateChatCamera = document.getElementById("dateChatCamera");
+const cameraLiveVideo = document.getElementById("cameraLiveVideo");
+const cameraPreviewImage = document.getElementById("cameraPreviewImage");
+const cameraPreviewVideo = document.getElementById("cameraPreviewVideo");
+const cameraCanvas = document.getElementById("cameraCanvas");
+const cameraCapture = document.getElementById("cameraCapture");
+const cameraPreviewActions = document.getElementById("cameraPreviewActions");
+const cameraRecordStatus = document.getElementById("cameraRecordStatus");
+
+let dateChatCameraStream = null;
+let dateChatCameraFacing = "environment";
+let dateChatCameraMode = "photo";
+let dateChatCameraFile = null;
+let dateChatRecorder = null;
+let dateChatRecordedChunks = [];
+let dateChatCameraObjectURL = null;
+let dateChatDiscardRecording = false;
+
+function hentikanStreamKameraDateChat() {
+  if (dateChatCameraStream) {
+    dateChatCameraStream.getTracks().forEach(track => track.stop());
+    dateChatCameraStream = null;
+  }
+  cameraLiveVideo.srcObject = null;
+}
+
+function hapusPreviewKameraDateChat() {
+  if (dateChatCameraObjectURL) {
+    URL.revokeObjectURL(dateChatCameraObjectURL);
+    dateChatCameraObjectURL = null;
+  }
+
+  dateChatCameraFile = null;
+  cameraPreviewImage.hidden = true;
+  cameraPreviewVideo.hidden = true;
+  cameraLiveVideo.hidden = false;
+  cameraPreviewImage.removeAttribute("src");
+  cameraPreviewVideo.removeAttribute("src");
+  cameraPreviewActions.hidden = true;
+  cameraCapture.hidden = false;
+  document.getElementById("cameraGalleryButton").hidden = false;
+  document.querySelector(".datechat-camera-modes").hidden = false;
+  document.getElementById("cameraSwitch").hidden = false;
+  cameraCapture.classList.remove("recording");
+}
+
+async function mulaiStreamKameraDateChat() {
+  hentikanStreamKameraDateChat();
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error("Kamera tidak didukung browser ini. Gunakan Chrome melalui HTTPS atau localhost.");
+  }
+
+  const daftarKamera = await navigator.mediaDevices.enumerateDevices();
+  let opsiVideo = { facingMode: { ideal: dateChatCameraFacing } };
+
+  if (dateChatCameraFacing === "environment") {
+    const kameraBelakang = daftarKamera.filter(function(device) {
+      return device.kind === "videoinput" &&
+        /belakang|back|environment|kamera [0-9]/i.test(device.label);
+    });
+
+    const pilihanLensa = kameraBelakang.find(function(device) {
+      return /camera 2|kamera 2/i.test(device.label);
+    });
+
+    if (pilihanLensa) {
+      opsiVideo = { deviceId: { exact: pilihanLensa.deviceId } };
+    }
+  }
+
+  try {
+    dateChatCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: opsiVideo,
+      audio: dateChatCameraMode === "video"
+    });
+  } catch (error) {
+    console.error("Gagal memilih lensa kamera:", error);
+    throw new Error(
+      "Gagal membuka lensa pilihan: " +
+      error.name + " - " + error.message
+    );
+  }
+
+  const cameraTrack = dateChatCameraStream.getVideoTracks()[0];
+
+  if (cameraTrack && cameraTrack.getCapabilities) {
+    const capabilities = cameraTrack.getCapabilities();
+
+    if (capabilities.zoom) {
+      try {
+        await cameraTrack.applyConstraints({
+          advanced: [{ zoom: capabilities.zoom.min }]
+        });
+      } catch (error) {
+        console.warn("Pengaturan zoom minimum tidak didukung:", error);
+      }
+    }
+  }
+
+  cameraLiveVideo.srcObject = dateChatCameraStream;
+  cameraLiveVideo.hidden = false;
+  await cameraLiveVideo.play();
+}
+
+async function bukaKameraDateChat(mode = "photo") {
+  if (!currentUser || !currentRoomId) {
+    alert("Buka percakapan terlebih dahulu.");
+    return;
+  }
+
+  if (dateChatRecorder && dateChatRecorder.state === "recording") {
+    return;
+  }
+
+  dateChatCameraMode = mode;
+  dateChatCamera.hidden = false;
+  hapusPreviewKameraDateChat();
+
+  document.getElementById("cameraModePhoto").classList.toggle("active", mode === "photo");
+  document.getElementById("cameraModeVideo").classList.toggle("active", mode === "video");
+  cameraRecordStatus.textContent = mode === "photo" ? "Kamera DateChat" : "Video DateChat";
+
+  try {
+    await mulaiStreamKameraDateChat();
+  } catch (error) {
+    console.error("Kamera gagal dibuka:", error);
+    hentikanStreamKameraDateChat();
+    dateChatCamera.hidden = true;
+    alert("Kamera tidak dapat dibuka: " + error.message);
+  }
+}
+
+function tutupKameraDateChat() {
+  dateChatDiscardRecording = true;
+
+  if (dateChatRecorder && dateChatRecorder.state === "recording") {
+    dateChatRecorder.stop();
+  }
+
+  dateChatRecorder = null;
+  dateChatRecordedChunks = [];
+  hentikanStreamKameraDateChat();
+  hapusPreviewKameraDateChat();
+  dateChatCamera.hidden = true;
+  cameraRecordStatus.textContent = "Kamera DateChat";
+}
+
+function tampilkanPreviewKameraDateChat(file, mediaType) {
+  hentikanStreamKameraDateChat();
+
+  dateChatCameraFile = file;
+  dateChatCameraObjectURL = URL.createObjectURL(file);
+
+  cameraLiveVideo.hidden = true;
+
+  if (mediaType === "image") {
+    cameraPreviewImage.src = dateChatCameraObjectURL;
+    cameraPreviewImage.hidden = false;
+  } else {
+    cameraPreviewVideo.src = dateChatCameraObjectURL;
+    cameraPreviewVideo.hidden = false;
+  }
+
+  cameraCapture.hidden = true;
+  document.getElementById("cameraGalleryButton").hidden = true;
+  document.querySelector(".datechat-camera-modes").hidden = true;
+  document.getElementById("cameraSwitch").hidden = true;
+  cameraPreviewActions.hidden = false;
+  cameraRecordStatus.textContent = "Pratinjau " + (mediaType === "image" ? "foto" : "video");
+}
+
+async function ambilFotoDateChat() {
+  if (!cameraLiveVideo.videoWidth || !cameraLiveVideo.videoHeight) {
+    alert("Kamera belum siap. Coba sebentar lagi.");
+    return;
+  }
+
+  cameraCanvas.width = cameraLiveVideo.videoWidth;
+  cameraCanvas.height = cameraLiveVideo.videoHeight;
+
+  const context = cameraCanvas.getContext("2d");
+  context.drawImage(cameraLiveVideo, 0, 0);
+
+  cameraCanvas.toBlob(blob => {
+    if (!blob) {
+      alert("Foto gagal diambil.");
+      return;
+    }
+
+    const file = new File(
+      [blob],
+      "datechat-foto-" + Date.now() + ".jpg",
+      { type: "image/jpeg" }
+    );
+
+    tampilkanPreviewKameraDateChat(file, "image");
+  }, "image/jpeg", 0.92);
+}
+
+function mulaiRekamVideoDateChat() {
+  if (!dateChatCameraStream || !window.MediaRecorder) {
+    alert("Perekaman video tidak didukung browser ini.");
+    return;
+  }
+
+  const tipeDidukung = [
+    "video/webm;codecs=vp8,opus",
+    "video/webm",
+    "video/mp4"
+  ].find(tipe => MediaRecorder.isTypeSupported(tipe));
+
+  if (!tipeDidukung) {
+    alert("Format perekaman video tidak didukung perangkat ini.");
+    return;
+  }
+
+  dateChatRecordedChunks = [];
+  dateChatDiscardRecording = false;
+
+  try {
+    dateChatRecorder = new MediaRecorder(dateChatCameraStream, {
+      mimeType: tipeDidukung
+    });
+
+    dateChatRecorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) {
+        dateChatRecordedChunks.push(event.data);
+      }
+    };
+
+    dateChatRecorder.onstop = () => {
+      const dibatalkan = dateChatDiscardRecording;
+      const chunks = dateChatRecordedChunks;
+      dateChatRecordedChunks = [];
+      dateChatRecorder = null;
+
+      hentikanStreamKameraDateChat();
+
+      if (dibatalkan || !chunks.length) return;
+
+      const mime = tipeDidukung.split(";")[0];
+      const ekstensi = mime === "video/mp4" ? "mp4" : "webm";
+      const blob = new Blob(chunks, { type: mime });
+
+      const file = new File(
+        [blob],
+        "datechat-video-" + Date.now() + "." + ekstensi,
+        { type: mime }
+      );
+
+      tampilkanPreviewKameraDateChat(file, "video");
+    };
+
+    dateChatRecorder.start();
+    cameraCapture.classList.add("recording");
+    cameraRecordStatus.textContent = "Sedang merekam...";
+  } catch (error) {
+    console.error(error);
+    alert("Gagal memulai rekaman: " + error.message);
+  }
+}
+
+cameraCapture.addEventListener("click", function() {
+  if (dateChatCameraMode === "photo") {
+    ambilFotoDateChat();
+    return;
+  }
+
+  if (dateChatRecorder && dateChatRecorder.state === "recording") {
+    dateChatRecorder.stop();
+    cameraRecordStatus.textContent = "Menyiapkan video...";
+    cameraCapture.classList.remove("recording");
+    return;
+  }
+
+  mulaiRekamVideoDateChat();
+});
+
+document.getElementById("cameraClose").addEventListener("click", tutupKameraDateChat);
+
+document.getElementById("cameraSwitch").addEventListener("click", async function() {
+  dateChatCameraFacing = dateChatCameraFacing === "environment" ? "user" : "environment";
+
+  try {
+    await mulaiStreamKameraDateChat();
+  } catch (error) {
+    console.error(error);
+    alert("Tidak dapat mengganti kamera: " + error.message);
+  }
+});
+
+document.getElementById("cameraModePhoto").addEventListener("click", async function() {
+  if (dateChatRecorder && dateChatRecorder.state === "recording") return;
+  dateChatCameraMode = "photo";
+  document.getElementById("cameraModePhoto").classList.add("active");
+  document.getElementById("cameraModeVideo").classList.remove("active");
+  cameraRecordStatus.textContent = "Kamera DateChat";
+
+  try {
+    await mulaiStreamKameraDateChat();
+  } catch (error) {
+    alert("Kamera gagal dibuka: " + error.message);
+  }
+});
+
+document.getElementById("cameraModeVideo").addEventListener("click", async function() {
+  if (dateChatRecorder && dateChatRecorder.state === "recording") return;
+  dateChatCameraMode = "video";
+  document.getElementById("cameraModeVideo").classList.add("active");
+  document.getElementById("cameraModePhoto").classList.remove("active");
+  cameraRecordStatus.textContent = "Video DateChat";
+
+  try {
+    await mulaiStreamKameraDateChat();
+  } catch (error) {
+    alert("Kamera gagal dibuka: " + error.message);
+  }
+});
+
+document.getElementById("cameraGalleryButton").addEventListener("click", function() {
+  tutupKameraDateChat();
+  document.getElementById("photoInput").click();
+});
+
+document.getElementById("cameraRetake").addEventListener("click", async function() {
+  hapusPreviewKameraDateChat();
+
+  try {
+    await mulaiStreamKameraDateChat();
+    cameraRecordStatus.textContent = dateChatCameraMode === "photo"
+      ? "Kamera DateChat"
+      : "Video DateChat";
+  } catch (error) {
+    alert("Kamera gagal dibuka: " + error.message);
+  }
+});
+
+document.getElementById("cameraSend").addEventListener("click", async function() {
+  const file = dateChatCameraFile;
+  if (!file) return;
+
+  const mediaType = file.type.startsWith("image/") ? "image" : "video";
+  const batas = mediaType === "image" ? BATAS_FOTO : BATAS_VIDEO;
+
+  if (file.size > batas) {
+    alert("Ukuran " + (mediaType === "image" ? "foto" : "video") +
+      " maksimal " + (mediaType === "image" ? "25 MB" : "100 MB") + ".");
+    return;
+  }
+
+  if (!currentUser || !currentRoomId) {
+    alert("Buka percakapan terlebih dahulu.");
+    return;
+  }
+
+  const tombol = this;
+  tombol.disabled = true;
+
+  const statusUpload = document.createElement("div");
+  statusUpload.className = "system-message";
+  statusUpload.textContent = "Sedang mengunggah " +
+    (mediaType === "image" ? "foto" : "video") + "...";
+  messages.appendChild(statusUpload);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    await uploadMediaDateChat(file, mediaType);
+    tutupKameraDateChat();
+  } catch (error) {
+    console.error("Upload kamera gagal:", error);
+    alert("Media gagal dikirim: " + error.message);
+  } finally {
+    statusUpload.remove();
+    tombol.disabled = false;
+  }
+});
 
 /* TEMA APLIKASI DATECHAT */
 const themeSelect = document.getElementById("themeSelect");
