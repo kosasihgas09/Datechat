@@ -2579,19 +2579,6 @@ button {
   box-shadow: 0 4px 13px rgba(57,136,255,.28);
 }
 
-/* ANIMASI RINGAN */
-@media (prefers-reduced-motion: no-preference) {
-  #homeScreen #conversationList .menu-card,
-  #chatScreen .message-bubble {
-    animation: datechatFadeIn .22s ease both;
-  }
-
-  @keyframes datechatFadeIn {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-}
-
 /* AVATAR DAN BADGE UNREAD DAFTAR CHAT */
 #homeScreen #conversationList .menu-card::before {
   display: none !important;
