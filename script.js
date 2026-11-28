@@ -3548,6 +3548,8 @@ function openRoom(roomId) {
     where("roomId", "==", roomId)
   );
 
+  let pemuatanAwalPesanTersembunyi = true;
+
   stopHiddenMessages = onSnapshot(
     hiddenQuery,
     function(snapshot) {
@@ -3563,6 +3565,16 @@ function openRoom(roomId) {
             bubble.remove();
           }
         });
+      if (pemuatanAwalPesanTersembunyi) {
+        pemuatanAwalPesanTersembunyi = false;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            if (currentRoomId === roomId && !chatScreen.hidden) {
+              messages.scrollTop = messages.scrollHeight;
+            }
+          });
+        });
+      }
     },
     function(error) {
       console.error("Gagal memuat pesan tersembunyi:", error);
@@ -3575,9 +3587,18 @@ function openRoom(roomId) {
     orderBy("createdAt", "asc")
   );
 
+  let pemuatanAwalPesan = true;
+
   stopMessages = onSnapshot(
     pesanQuery,
     function(snapshot) {
+      const sebelumnyaAdaPesan =
+        messages.querySelector(".message-bubble") !== null;
+      const posisiScrollSebelumnya = messages.scrollTop;
+      const dekatBawah =
+        messages.scrollHeight - messages.scrollTop -
+        messages.clientHeight <= 120;
+
       searchMessageMatches.delete(roomId);
       messages.innerHTML = "";
 
@@ -3854,7 +3875,21 @@ if (data.text && data.text.trim()) {
         messages.appendChild(bubble);
       });
 
-      messages.scrollTop = messages.scrollHeight;
+      if (pemuatanAwalPesan) {
+        pemuatanAwalPesan = false;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            if (currentRoomId === roomId && !chatScreen.hidden) {
+              messages.scrollTop = messages.scrollHeight;
+            }
+          });
+        });
+      } else if (dekatBawah) {
+        messages.scrollTop = messages.scrollHeight;
+      } else {
+        messages.scrollTop = posisiScrollSebelumnya;
+      }
+
       terapkanPencarianPesan();
     },
     function(error) {
@@ -5332,11 +5367,43 @@ if (lastSeenVisibilitySelect) {
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", sesuaikanViewportChat);
     window.visualViewport.addEventListener("scroll", sesuaikanViewportChat);
+
+    window.visualViewport.addEventListener("resize", function () {
+      if (chatScreen.hidden ||
+          document.activeElement.id !== "chatInput") return;
+
+      const messages = document.getElementById("messages");
+      if (!messages) return;
+
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          if (!chatScreen.hidden &&
+              document.activeElement.id === "chatInput") {
+            messages.scrollTop = messages.scrollHeight;
+          }
+        });
+      });
+    });
   }
 
   document.addEventListener("focusin", function (event) {
-    if (chatScreen && chatScreen.contains(event.target)) {
-      sesuaikanViewportChat();
+    if (!chatScreen || !chatScreen.contains(event.target)) return;
+
+    sesuaikanViewportChat();
+
+    if (event.target.id === "chatInput") {
+      const messages = document.getElementById("messages");
+
+      if (messages) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            if (!chatScreen.hidden &&
+                document.activeElement === event.target) {
+              messages.scrollTop = messages.scrollHeight;
+            }
+          });
+        });
+      }
     }
   });
 })();
